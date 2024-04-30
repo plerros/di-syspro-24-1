@@ -37,6 +37,7 @@ void pack(struct array *ptr, struct array **packets)
 		memcpy(tmp.data, &(src[i]), size);
 		llnode_add(&ll, &tmp);
 		tmp.index++;
+		i += size;
 	}
 
 	array_new(packets, ll);
@@ -49,16 +50,22 @@ void unpack(struct array *packets, struct array **ptr)
 
 	struct packet *arr = (struct packet*)(packets->data);
 
-	size_t element_count = arr[0].data_sum / arr[0].element_size;
-	if (arr[0].data_sum % arr[0].element_size)
-		element_count++;
-
 	struct llnode *ll = NULL;
-	llnode_new(&ll, sizeof(arr[0].data), NULL);
+	llnode_new(&ll, sizeof(char), NULL);
 
-	for(size_t i = 0; i < element_count; i++) {
-		llnode_add(&ll, &(arr[i].data));
+	size_t datapack = sizeof(arr[0].data);
+	size_t sum = arr[0].data_sum;
+
+	for(size_t i=0, j=0; i * datapack + j < sum;){
+		llnode_add(&ll, &(arr[i].data[j]));
+
+		j++;
+		if(j >= datapack) {
+			i++;
+			j = 0;
+		}
 	}
+
 
 	array_new(ptr, ll);
 	llnode_free(ll);

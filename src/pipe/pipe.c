@@ -31,7 +31,8 @@ void pipe_new(struct pipe **ptr, const char *name)
 	size_t len = strlen(name) + 1;
 	new->name = malloc(sizeof(char) * len);
 
-	void *rp = memcpy(new->name, name, len);
+	void *rp = strcpy(new->name, name);
+
 	if(rp != new->name)
 		abort();
 
