@@ -98,19 +98,28 @@ static void pipe_read(struct fifopipe *ptr, struct array **dst)
 	if(ptr->fd == -1)
 		abort();
 
-	struct packet pack;
-	read(ptr->fd, &pack, PACKET_SIZE);
+	struct packet current;
+	struct packet prev;
+	read(ptr->fd, &current, PACKET_SIZE);
 
 	struct llnode *ll = NULL;
 	llnode_new(&ll, PACKET_SIZE, NULL);
-	llnode_add(&ll, &pack);
+	llnode_add(&ll, &current);
 
-	size_t elements = pack.data_sum / pack.element_size;
-	elements += pack.data_sum % pack.element_size;
+	size_t elements = current.data_sum / sizeof(current.data);
+	if (current.data_sum % sizeof(current.data))
+		elements++;
 
 	for (size_t i = 1; i < elements; i++) {
-		read(ptr->fd, &pack, PACKET_SIZE);
-		llnode_add(&ll, &pack);
+		//prev = current;
+		memcpy(&prev, &current, sizeof(struct packet));
+
+		read(ptr->fd, &current, PACKET_SIZE);
+		
+		if(!packet_isnext(&prev, &current))
+			abort();
+
+		llnode_add(&ll, &current);
 	}
 
 	close(ptr->fd);

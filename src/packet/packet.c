@@ -63,3 +63,20 @@ void unpack(struct array *packets, struct array **ptr)
 
 	(*ptr)->element_size = arr[0].element_size;
 }
+
+bool packet_isnext(struct packet *a, struct packet *b)
+{
+	OPTIONAL_ASSERT(a != NULL);
+	OPTIONAL_ASSERT(b != NULL);
+
+	if (a->data_sum != b->data_sum)
+		return false;
+
+	if (a->element_size != b->element_size)
+		return false;
+
+	if (! (a->index + 1 == b->index))
+		return false;
+
+	return true;
+}

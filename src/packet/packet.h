@@ -15,5 +15,6 @@ struct packet
 
 void pack(struct array *ptr, struct array **packets);
 void unpack(struct array *packets, struct array **ptr);
+bool packet_isnext(struct packet *a, struct packet *b);
 
 #endif /*SYSPROG24_1_PACKET_H*/
