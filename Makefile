@@ -1,4 +1,5 @@
-TARGET_EXEC ?= jobExecutorServer
+SERVER_EXEC ?= jobExecutorServer
+CLIENT_EXEC ?= jobCommander
 
 BUILD_DIR ?= build
 SRC_DIRS ?= .
@@ -23,16 +24,27 @@ LFLAGS := # -Wl,--gc-sections
 LIBS := -lm
 
 SRCS := $(shell find $(SRC_DIRS) -name *.c)
-OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
-DEPS := $(OBJS:.o=.d)
+
+S_SRCS := $(filter-out ./src/jobCommander.c, $(SRCS))
+S_OBJS := $(S_SRCS:%=$(BUILD_DIR)/%.o)
+S_DEPS := $(S_OBJS:.o=.d)
+
+C_SRCS := $(filter-out ./src/jobExecutorServer.c, $(SRCS))
+C_OBJS := $(C_SRCS:%=$(BUILD_DIR)/%.o)
+C_DEPS := $(C_OBJS:.o=.d)
 
 INC_DIRS := $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
 CPPFLAGS ?= $(INC_FLAGS) -MMD -MP
 
-$(TARGET_EXEC): $(OBJS) Makefile
-	$(CC) $(WARNINGS) $(DEBUG) $(OPTIMIZE) $(LFLAGS) $(OBJS) -o $@ $(LDFLAGS) $(LIBS)
+all: $(SERVER_EXEC) $(CLIENT_EXEC)
+
+$(SERVER_EXEC): $(S_OBJS) Makefile
+	$(CC) $(WARNINGS) $(DEBUG) $(OPTIMIZE) $(LFLAGS) $(S_OBJS) -o $@ $(LDFLAGS) $(LIBS)
+
+$(CLIENT_EXEC): $(C_OBJS) Makefile
+	$(CC) $(WARNINGS) $(DEBUG) $(OPTIMIZE) $(LFLAGS) $(C_OBJS) -o $@ $(LDFLAGS) $(LIBS)
 
 # c source
 $(BUILD_DIR)/%.c.o: %.c Makefile
@@ -42,7 +54,7 @@ $(BUILD_DIR)/%.c.o: %.c Makefile
 .PHONY: clean
 
 clean:
-	$(RM) -r $(BUILD_DIR) $(TARGET_EXEC)
+	$(RM) -r $(BUILD_DIR) $(SERVER_EXEC) $(CLIENT_EXEC)
 
 -include $(DEPS)
 

@@ -1,22 +1,22 @@
 #include <stdio.h>
 #include <stddef.h>
 
+#include "configuration.h"
+
 #include "llnode.h"
 #include "array.h"
-#include "pipe.h"
+#include "fifopipe.h"
 #include "packet.h"
 
-#define PIPE_NAME "mypipe____mypipe"
 
 int main()
 {
-/*
-	struct pipe *pipe_read = NULL;
+	struct fifopipe *pipe_read = NULL;
 	pipe_new(&pipe_read, PIPE_NAME);
 	printf("%s\n", pipe_read->name);
 	pipe_free(pipe_read);
 
-*/
+/*
 	char string[] = PIPE_NAME;
 	struct llnode *ll = NULL;
 	llnode_new(&ll, sizeof(char), NULL);
@@ -45,5 +45,6 @@ int main()
 	printf("%s\n", out);
 	array_free(unpacked_arr);
 
+*/
 	return 0;
 }

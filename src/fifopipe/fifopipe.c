@@ -12,9 +12,9 @@
 #include "helper.h"
 #include "llnode.h"
 #include "array.h"
-#include "pipe.h"
+#include "fifopipe.h"
 
-void pipe_new(struct pipe **ptr, const char *name)
+void pipe_new(struct fifopipe **ptr, const char *name)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
 	OPTIONAL_ASSERT(*ptr == NULL);
@@ -22,7 +22,7 @@ void pipe_new(struct pipe **ptr, const char *name)
 	if (name == NULL)
 		abort();
 
-	struct pipe *new = malloc(sizeof(struct pipe));
+	struct fifopipe *new = malloc(sizeof(struct fifopipe));
 	if (new == NULL)
 		abort();
 
@@ -49,7 +49,7 @@ void pipe_new(struct pipe **ptr, const char *name)
 	*ptr = new;
 }
 
-void pipe_free(struct pipe *ptr)
+void pipe_free(struct fifopipe *ptr)
 {
 	if (ptr == NULL)
 		return;

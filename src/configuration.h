@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#define PIPE_NAME "mypipe"
+
 #define LINK_SIZE 100
 
 #define SAFETY_CHECKS true
