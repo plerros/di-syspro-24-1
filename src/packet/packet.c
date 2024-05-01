@@ -1,19 +1,10 @@
 #include <string.h>
 #include "helper.h"
 
+#include "configuration.h"
+
 #include "packet.h"
 #include "assert.h"
-
-#define PACKET_SIZE 32
-
-
-struct packet
-{
-	size_t data_sum;
-	size_t element_size; // of the source data
-	size_t index;
-	char data[PACKET_SIZE - (3 * sizeof(size_t))];
-};
 
 void pack(struct array *ptr, struct array **packets)
 {

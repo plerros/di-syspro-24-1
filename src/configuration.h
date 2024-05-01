@@ -5,6 +5,7 @@
 
 #define PIPE_NAME "mypipe"
 
+#define PACKET_SIZE 32
 #define LINK_SIZE 100
 
 #define SAFETY_CHECKS true
