@@ -72,65 +72,40 @@ static void pipe_write(struct fifopipe *ptr, struct array *src)
 	if(ptr->fd == -1)
 		abort();
 
-	struct array *packets = NULL;
-	pack(src, &packets);
+	char *data = (char*)src->data;
 
-	char *data = (char*)packets->data;
-
-	for (size_t i = 0; i < packets->size; i += 1)
-		write(ptr->fd, &(data[i * packets->element_size]), PACKET_SIZE);
-
-	close(ptr->fd);
-	ptr->fd = -1;
-
-	array_free(packets);
+	for (size_t i = 0; i < src->size; i += 1)
+		write(ptr->fd, &(data[i * src->element_size]), src->element_size);
 }
 
-static void pipe_read(struct fifopipe *ptr, struct array **dst)
+static void pipe_read(struct fifopipe *ptr, struct array **dst, size_t msg_size, size_t msg_count)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
 	OPTIONAL_ASSERT(dst != NULL);
 	OPTIONAL_ASSERT(*dst == NULL);
 
-	if(ptr->fd == -1)
+	if (ptr->fd == -1)
 		ptr->fd = open(ptr->name, O_RDONLY);
 
-	if(ptr->fd == -1)
+	if (ptr->fd == -1)
 		abort();
 
-	struct packet current;
-	struct packet prev;
-	read(ptr->fd, &current, PACKET_SIZE);
-
 	struct llnode *ll = NULL;
-	llnode_new(&ll, PACKET_SIZE, NULL);
-	llnode_add(&ll, &current);
+	llnode_new(&ll, msg_size, NULL);
 
-	size_t elements = current.data_sum / sizeof(current.data);
-	if (current.data_sum % sizeof(current.data))
-		elements++;
+	char *tmp = malloc(sizeof(char) * msg_size);
+	if (tmp == NULL)
+		abort();
 
-	for (size_t i = 1; i < elements; i++) {
-		//prev = current;
-		memcpy(&prev, &current, sizeof(struct packet));
-
-		read(ptr->fd, &current, PACKET_SIZE);
-		
-		if(!packet_isnext(&prev, &current))
-			abort();
-
-		llnode_add(&ll, &current);
+	for (size_t i = 0; i < msg_count; i++) {
+		read(ptr->fd, tmp, msg_size);
+		llnode_add(&ll, tmp);
 	}
 
-	close(ptr->fd);
-	ptr->fd = -1;
+	free(tmp);
 
-	struct array *packets = NULL;
-	array_new(&packets, ll);
+	array_new(dst, ll);
 	llnode_free(ll);
-
-	unpack(packets, dst);
-	array_free(packets);
 }
 
 // WRITE ONLY PIPE
@@ -192,8 +167,8 @@ void ropipe_free(struct ropipe *ptr)
 	free(ptr);
 }
 
-void ropipe_read(struct ropipe *ptr, struct array **dst)
+void ropipe_read(struct ropipe *ptr, struct array **dst, size_t msg_size, size_t msg_count)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
-	pipe_read(ptr->pipe, dst);
+	pipe_read(ptr->pipe, dst, msg_size, msg_count);
 }

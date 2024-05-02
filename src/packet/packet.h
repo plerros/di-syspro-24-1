@@ -4,17 +4,19 @@
 #include <stddef.h>
 
 #include "array.h"
+#include "fifopipe.h"
 
-struct packet
+struct packets
 {
-	size_t data_sum;
-	size_t element_size; // of the source data
-	size_t index;
-	char data[PACKET_SIZE - (3 * sizeof(size_t))];
+	struct array *packets;
 };
 
-void pack(struct array *ptr, struct array **packets);
-void unpack(struct array *packets, struct array **ptr);
-bool packet_isnext(struct packet *a, struct packet *b);
+void packets_new(struct packets **ptr);
+void packets_free(struct packets *ptr);
 
+void packets_pack(struct packets *ptr, struct array *src);
+void packets_unpack(struct packets *ptr, struct array **dst);
+
+void packets_send(struct packets *ptr, struct wopipe *pipe);
+void packets_receive(struct packets *ptr, struct ropipe *pipe);
 #endif /*SYSPROG24_1_PACKET_H*/

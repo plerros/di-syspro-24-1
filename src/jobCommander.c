@@ -33,9 +33,14 @@ dolor commodo, sed mattis ipsum laoreet.";
 	array_new(&arr, ll);
 	llnode_free(ll);
 
+	struct packets *p = NULL;
+	packets_new(&p);
+	packets_pack(p, arr);
+
 	struct wopipe *pipe = NULL;
 	wopipe_new(&pipe, PIPE_NAME);
-	wopipe_write(pipe, arr);
+	packets_send(p, pipe);
+	packets_free(p);
 
 	array_free(arr);
 	wopipe_free(pipe);
