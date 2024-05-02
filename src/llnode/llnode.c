@@ -12,12 +12,15 @@ void llnode_new(struct llnode **ptr, size_t element_size, struct llnode *next)
 	OPTIONAL_ASSERT(ptr != NULL);
 	OPTIONAL_ASSERT(*ptr == NULL);
 
+	if (ptr == NULL)
+		return;
+
 	struct llnode *new = malloc(sizeof(struct llnode));
 	if (new == NULL)
 		abort();
 
 	new->data = malloc(element_size * LINK_SIZE);
-	if (new->data == NULL)
+	if (new->data == NULL && (element_size * LINK_SIZE > 0))
 		abort();
 
 	new->element_size = element_size;
@@ -34,7 +37,8 @@ void llnode_free(struct llnode *node)
 	struct llnode *tmp = node;
 	for (struct llnode *i = tmp; tmp != NULL; i = tmp) {
 		tmp = tmp->next;
-		free(i->data);
+		if (i->data != NULL)
+			free(i->data);
 		free(i);
 	}
 }
@@ -43,7 +47,11 @@ void llnode_add(struct llnode **ptr, void *value)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
 	OPTIONAL_ASSERT(*ptr != NULL);
-	OPTIONAL_ASSERT(value != NULL);
+
+	if (ptr == NULL)
+		return;
+	if (value == NULL)
+		return;
 
 	if ((*ptr)->logical_size >= LINK_SIZE) {
 		struct llnode *new = NULL;
@@ -59,6 +67,9 @@ void llnode_add(struct llnode **ptr, void *value)
 
 size_t llnode_getsize(struct llnode *ptr)
 {
+	if (ptr == NULL)
+		return 0;
+
 	size_t size = 0;
 	for (struct llnode *i = ptr; i != NULL; i = i->next)
 		size += i->logical_size;
@@ -69,6 +80,8 @@ size_t llnode_getsize(struct llnode *ptr)
 void *llnode_get(struct llnode *ptr, size_t index)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
+	if (ptr == NULL)
+		return NULL;
 
 	if (index < ptr->logical_size) {
 		size_t offset = index * ptr->element_size;

@@ -8,6 +8,6 @@
 #define PACKET_SIZE 32
 #define LINK_SIZE 100
 
-#define SAFETY_CHECKS true
+#define SAFETY_CHECKS false
 
 #endif /*SYSPROG24_1_CONFIGURATION_H*/

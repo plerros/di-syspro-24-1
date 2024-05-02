@@ -14,7 +14,9 @@ void array_free(struct array *ptr)
 	if (ptr == NULL)
 		return;
 
-	free(ptr->data);
+	if (ptr->data != NULL)
+		free(ptr->data);
+
 	free(ptr);
 }
 
@@ -23,25 +25,24 @@ void array_new(struct array **ptr, struct llnode *ll)
 	OPTIONAL_ASSERT(ptr != NULL);
 	OPTIONAL_ASSERT(*ptr == NULL);
 
-	if (ll == NULL)
+	if (ptr == NULL)
 		return;
-
 
 	struct array *new = malloc(sizeof(struct array));
 	if (new == NULL)
 		abort();
 
 	new->data = NULL;
-	new->element_size = ll->element_size;
-	new->size = llnode_getsize(ll);
+	new->element_size = 0;
+	new->size = 0;
 
-	if (new->element_size == 0)
-		return;
-	if (new->size == 0)
-		return;
+	if (ll != NULL) {
+		new->element_size = ll->element_size;
+		new->size = llnode_getsize(ll);
+	}
 
 	void *arr = malloc(new->element_size * new->size);
-	if (arr == NULL)
+	if (arr == NULL && new->element_size * new->size > 0)
 		abort();
 
 	// copy

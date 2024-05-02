@@ -18,26 +18,43 @@ struct packet
 void pack(struct array *ptr, struct array **packets)
 {
 	static_assert(PACKET_SIZE > 3 * sizeof(size_t), "PACKET_SIZE too small.");
-	OPTIONAL_ASSERT(ptr != NULL);
+
+	OPTIONAL_ASSERT(packets != NULL);
+	OPTIONAL_ASSERT(*packets == NULL);
+
+
+	if (packets == NULL)
+		return;
 
 	struct llnode *ll = NULL;
 	llnode_new(&ll, sizeof(struct packet), NULL);
 
+	size_t size = 0;
+	size_t element_size = 0;
+	char *data = NULL;
+
+	if (ptr != NULL) {
+		size = ptr->size;
+		element_size = ptr->element_size;
+		data = (char*)ptr->data;
+	}
+
 	struct packet tmp;
-	tmp.data_sum = ptr->size;
+	tmp.data_sum = size;
 	tmp.index = 0;
-	tmp.element_size = ptr->element_size;
-	char *src = (char*)ptr->data;
+	tmp.element_size = element_size;
 
-	for (size_t i = 0; i < ptr->size;) {
-		size_t size = sizeof(tmp.data);
-		if (size >  ptr->size - i)
-			size = ptr->size - i;
+	for (size_t i = 0; i < size;) {
+		size_t current_size = sizeof(tmp.data);
+		if (current_size >  size - i)
+			current_size = size - i;
 
-		memcpy(tmp.data, &(src[i]), size);
-		llnode_add(&ll, &tmp);
+		if (data != NULL) {
+			memcpy(tmp.data, &(data[i]), current_size);
+			llnode_add(&ll, &tmp);
+		}
 		tmp.index++;
-		i += size;
+		i += current_size;
 	}
 
 	array_new(packets, ll);
@@ -46,21 +63,35 @@ void pack(struct array *ptr, struct array **packets)
 
 void unpack(struct array *packets, struct array **ptr)
 {
-	OPTIONAL_ASSERT(packets != NULL);
+	OPTIONAL_ASSERT(ptr != NULL);
+	OPTIONAL_ASSERT(*ptr == NULL);
 
-	struct packet *arr = (struct packet*)(packets->data);
+	if (ptr == NULL)
+		return;
+
+	struct packet *arr = NULL;
+
+	if (packets != NULL)
+		arr = (struct packet*)(packets->data);
 
 	struct llnode *ll = NULL;
 	llnode_new(&ll, sizeof(char), NULL);
 
-	size_t datapack = sizeof(arr[0].data);
-	size_t sum = arr[0].data_sum;
+	size_t datapack = 0;
+	size_t sum = 0;
+	size_t element_size = 0;
+
+	if (arr != NULL) {
+		datapack = sizeof(arr[0].data);
+		sum = arr[0].data_sum;
+		element_size = arr[0].element_size;
+	}
 
 	for(size_t i=0, j=0; i * datapack + j < sum;){
 		llnode_add(&ll, &(arr[i].data[j]));
 
 		j++;
-		if(j >= datapack) {
+		if (j >= datapack) {
 			i++;
 			j = 0;
 		}
@@ -69,13 +100,15 @@ void unpack(struct array *packets, struct array **ptr)
 	array_new(ptr, ll);
 	llnode_free(ll);
 
-	(*ptr)->element_size = arr[0].element_size;
+	(*ptr)->element_size = element_size;
 }
 
 bool packet_isnext(struct packet *a, struct packet *b)
 {
 	OPTIONAL_ASSERT(a != NULL);
 	OPTIONAL_ASSERT(b != NULL);
+
+// TODO
 
 	if (a->data_sum != b->data_sum)
 		return false;
@@ -93,6 +126,9 @@ void packets_new(struct packets **ptr)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
 	OPTIONAL_ASSERT(*ptr == NULL);
+
+	if (ptr == NULL)
+		return;
 
 	struct packets *new = malloc(sizeof(struct packets));
 	if (new == NULL)
@@ -116,24 +152,45 @@ void packets_free(struct packets *ptr)
 void packets_pack(struct packets *ptr, struct array *src)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
-	pack(src, &(ptr->packets));
+
+	struct array **packets = NULL;
+
+	if (ptr != NULL)
+		packets = &(ptr->packets);
+
+	pack(src, packets);
 }
 
 void packets_unpack(struct packets *ptr, struct array **dst)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
-	unpack(ptr->packets, dst);
+	struct array *packets = NULL;
+
+	if (ptr != NULL)
+		packets = ptr->packets;
+
+	unpack(packets, dst);
 }
 
 void packets_send(struct packets *ptr, struct wopipe *pipe)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
-	wopipe_write(pipe, ptr->packets);
+	struct array *packets = NULL;
+
+	if (ptr != NULL)
+		packets = ptr->packets;
+
+	wopipe_write(pipe, packets);
 }
 
 void packets_receive(struct packets *ptr, struct ropipe *pipe)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
+
+	struct array **dst = NULL;
+	if (ptr != NULL) {
+		dst = &(ptr->packets);
+	}
 
 	struct array *tmp = NULL;
 
@@ -163,6 +220,6 @@ void packets_receive(struct packets *ptr, struct ropipe *pipe)
 
 	free(packet);
 
-	array_new(&(ptr->packets), ll);
+	array_new(dst, ll);
 	llnode_free(ll);
 }
