@@ -87,7 +87,7 @@ void unpack(struct array *packets, struct array **ptr)
 		element_size = arr[0].element_size;
 	}
 
-	for(size_t i=0, j=0; i * datapack + j < sum;){
+	for (size_t i=0, j=0; i * datapack + j < sum;){
 		llnode_add(&ll, &(arr[i].data[j]));
 
 		j++;
@@ -188,9 +188,8 @@ void packets_receive(struct packets *ptr, struct ropipe *pipe)
 	OPTIONAL_ASSERT(ptr != NULL);
 
 	struct array **dst = NULL;
-	if (ptr != NULL) {
+	if (ptr != NULL)
 		dst = &(ptr->packets);
-	}
 
 	struct array *tmp = NULL;
 
