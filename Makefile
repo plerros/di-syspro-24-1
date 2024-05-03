@@ -54,7 +54,7 @@ $(BUILD_DIR)/%.c.o: %.c Makefile
 .PHONY: clean
 
 clean:
-	$(RM) -r $(BUILD_DIR) $(SERVER_EXEC) $(CLIENT_EXEC)
+	$(RM) -r $(BUILD_DIR) $(SERVER_EXEC) $(CLIENT_EXEC) mypipe
 
 -include $(DEPS)
 

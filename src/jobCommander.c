@@ -14,6 +14,7 @@ int main()
 	struct llnode *ll = NULL;
 	llnode_new(&ll, sizeof(char), NULL);
 
+/*
 	char str[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
 Curabitur turpis velit, efficitur sit amet consectetur nec, porta congue tellus. \
 Morbi in turpis ac erat tristique mollis. Fusce tincidunt orci vel nisl \
@@ -25,6 +26,9 @@ lobortis ligula. Aliquam semper augue sit amet justo tempus, sit amet sodales du
 pretium. Aliquam sed leo libero. Sed accumsan, ex non porta hendrerit, metus nibh \
 sollicitudin odio, vitae molestie orci neque nec lacus. Donec ursus magna eget \
 dolor commodo, sed mattis ipsum laoreet.";
+*/
+	char str[] = "exit";
+
 
 	for (size_t i = 0; i < strlen(str) + 1; i++)
 		llnode_add(&ll, &(str[i]));

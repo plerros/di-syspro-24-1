@@ -7,24 +7,38 @@
 #include "array.h"
 #include "fifopipe.h"
 #include "packet.h"
+#include "command.h"
+#include <unistd.h>
 
 int main()
 {
 	struct ropipe *pipe = NULL;
 	ropipe_new(&pipe, PIPE_NAME);
 
-	struct packets *p = NULL;
-	packets_new(&p);
-	packets_receive(p, pipe);
+	while (1) {
+		sleep(2);
 
+		struct packets *p = NULL;
+		packets_new(&p);
+		packets_receive(p, pipe);
 
-	struct array *arr = NULL;
-	packets_unpack(p, &arr);
-	packets_free(p);
+		struct array *arr = NULL;
+		packets_unpack(p, &arr);
+		packets_free(p);
 
-	char *str = (char*)arr->data;
-	printf("%s\n", str);
-	array_free(arr);
+		if (arr != NULL) {
+			char *str = (char*) array_get(arr, 0);
+			if (str != NULL)
+				printf("%s\n", str);
+
+			if (cmd_exit == command_recognize(arr)) {
+				printf("RECEIVED EXIT\n");
+				break;
+			}
+		}
+
+		array_free(arr);
+	}
 
 	ropipe_free(pipe);
 	return 0;

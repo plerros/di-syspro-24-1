@@ -61,7 +61,6 @@ static void pipe_free(struct fifopipe *ptr)
 		close(ptr->fd);
 
 	if (ptr->name != NULL) {
-//		remove(ptr->name);
 		free(ptr->name);
 	}
 
@@ -127,7 +126,17 @@ static void pipe_read(struct fifopipe *ptr, struct array **dst, size_t msg_size,
 		abort();
 
 	for (size_t i = 0; i < msg_count; i++) {
-		read(fd, tmp, msg_size);
+		size_t rc = read(fd, tmp, msg_size);
+
+		if (rc == 0) {
+			// EOF
+			break;
+		}
+		else if (rc < msg_size) {
+			perror("ERROR");
+			exit(1);
+		}
+
 		llnode_add(&ll, tmp);
 	}
 

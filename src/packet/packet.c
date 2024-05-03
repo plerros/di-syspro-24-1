@@ -36,7 +36,7 @@ void pack(struct array *ptr, struct array **packets)
 	if (ptr != NULL) {
 		size = ptr->size;
 		element_size = ptr->element_size;
-		data = (char*)ptr->data;
+		data = (char*)array_get(ptr, 0);
 	}
 
 	struct packet tmp;
@@ -50,6 +50,7 @@ void pack(struct array *ptr, struct array **packets)
 			current_size = size - i;
 
 		if (data != NULL) {
+			memset(tmp.data, 0, sizeof(tmp.data));
 			memcpy(tmp.data, &(data[i]), current_size);
 			llnode_add(&ll, &tmp);
 		}
@@ -72,7 +73,7 @@ void unpack(struct array *packets, struct array **ptr)
 	struct packet *arr = NULL;
 
 	if (packets != NULL)
-		arr = (struct packet*)(packets->data);
+		arr = (struct packet*)(array_get(packets, 0));
 
 	struct llnode *ll = NULL;
 	llnode_new(&ll, sizeof(char), NULL);
@@ -195,16 +196,43 @@ void packets_receive(struct packets *ptr, struct ropipe *pipe)
 
 	ropipe_read(pipe, &tmp, PACKET_SIZE, 1);
 
-	struct packet *packet0 = (struct packet *)tmp->data;
-	size_t packet_count = DIV_ROOF(packet0->data_sum, sizeof(packet0->data));
+	struct packet *packet0 = NULL;
+	size_t packet_count = 0;
+	struct packet *packet = NULL;
 
-	struct packet *packet = malloc(sizeof(struct packet) * packet_count);
-	memcpy(&(packet[0]), tmp->data, sizeof(struct packet));
+	if (tmp != NULL)
+		packet0 = (struct packet *)array_get(tmp, 0);
+
+	if (packet0 == NULL)
+		goto skip;
+
+	packet_count = DIV_ROOF(packet0->data_sum, sizeof(packet0->data));
+	if (packet_count == 0)
+		goto skip;
+
+	packet = malloc(sizeof(struct packet) * packet_count);
+	if (packet == NULL)
+		abort();
+
+	memcpy(&(packet[0]), packet0, sizeof(struct packet));
+
 	array_free(tmp);
 	tmp = NULL;
 
 	ropipe_read(pipe, &tmp, PACKET_SIZE, packet_count);
-	memcpy(&(packet[1]), tmp->data, sizeof(struct packet) * (packet_count - 1));
+
+	struct pakcet *packet1 = NULL;
+
+
+	if (
+		tmp != NULL
+		&& array_get(tmp, 0) != NULL
+		&& packet_count > 1
+	) {
+		memcpy(&(packet[1]), array_get(tmp, 0), sizeof(struct packet) * (packet_count - 1));
+	}
+
+skip:
 	array_free(tmp);
 
 	struct llnode *ll = NULL;
