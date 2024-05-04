@@ -34,6 +34,7 @@ C_OBJS := $(C_SRCS:%=$(BUILD_DIR)/%.o)
 C_DEPS := $(C_OBJS:.o=.d)
 
 INC_DIRS := $(shell find $(SRC_DIRS) -type d)
+INC_DIRS := $(filter-out ./.git/%, $(INC_DIRS))
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
 CPPFLAGS ?= $(INC_FLAGS) -MMD -MP

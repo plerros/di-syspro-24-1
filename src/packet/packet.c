@@ -50,6 +50,14 @@ char *packet_get_data(struct packet *ptr)
 	return &(ptr->data[0]);
 }
 
+size_t packet_get_packetcount(struct packet *ptr)
+{
+	if (ptr == NULL)
+		return 0;
+
+	return (DIV_ROOF(ptr->data_sum, PAKET_DATA_SIZE));
+}
+
 void pack(struct array *ptr, struct array **packets)
 {
 	static_assert(PACKET_SIZE > 3 * sizeof(size_t), "PACKET_SIZE too small.");
@@ -71,12 +79,12 @@ void pack(struct array *ptr, struct array **packets)
 	tmp.element_size = array_get_elementsize(ptr);
 
 	for (size_t i = 0; i < tmp.data_sum;) {
-		size_t current_size = sizeof(tmp.data);
+		size_t current_size = PAKET_DATA_SIZE;
 		if (current_size >  tmp.data_sum - i)
 			current_size = tmp.data_sum - i;
 
 		if (data != NULL) {
-			memset(tmp.data, 0, sizeof(tmp.data));
+			memset(tmp.data, 0, PAKET_DATA_SIZE);
 			memcpy(tmp.data, &(data[i]), current_size);
 			llnode_add(&ll, &tmp);
 		}
@@ -96,10 +104,7 @@ void unpack(struct array *packets, struct array **ptr)
 	if (ptr == NULL)
 		return;
 
-	struct packet *arr = NULL;
-
-	if (packets != NULL)
-		arr = (struct packet*)(array_get(packets, 0));
+	struct packet *arr = (struct packet*)(array_get(packets, 0));
 
 	struct llnode *ll = NULL;
 	llnode_new(&ll, sizeof(char), NULL);
@@ -207,56 +212,31 @@ void packets_receive(struct packets *ptr, struct ropipe *pipe)
 
 	ropipe_read(pipe, &tmp, PACKET_SIZE, 1);
 
-	struct packet *packet0 = NULL;
-	size_t packet_count = 0;
-	struct packet *packet = NULL;
-
-	if (tmp != NULL)
-		packet0 = (struct packet *)array_get(tmp, 0);
-
-	if (packet0 == NULL)
-		goto skip;
-
-	packet_count = DIV_ROOF(packet0->data_sum, sizeof(packet0->data));
-	if (packet_count == 0)
-		goto skip;
-
-	packet = malloc(sizeof(struct packet) * packet_count);
-	if (packet == NULL)
-		abort();
-
-	memcpy(&(packet[0]), packet0, sizeof(struct packet));
-
+	struct llnode *ll = NULL;
+	llnode_new(&ll, PACKET_SIZE, NULL);
+	llnode_add(&ll, array_get(tmp, 0));
 	array_free(tmp);
 	tmp = NULL;
 
-	ropipe_read(pipe, &tmp, PACKET_SIZE, packet_count-1);
+	struct packet *pkt = (struct packet *)llnode_get(ll, 0);
 
-	struct pakcet *packet1 = NULL;
+	if (pkt != NULL && packet_get_packetcount(pkt) > 0) {
+		size_t packet_count = packet_get_packetcount(pkt);
+		size_t remaining = 0;
+		if (packet_count > 0)
+			remaining = packet_count - 1;
+		ropipe_read(pipe, &tmp, PACKET_SIZE, remaining);
 
+		for (size_t i = packet_count - remaining, j = 0; i < packet_count; i++, j++) {
+			llnode_add(&ll, array_get(tmp, j));
+			struct packet *curr = (struct packet *)llnode_get(ll, i);
+			struct packet *prev = (struct packet *)llnode_get(ll, i - 1);
 
-	if (
-		tmp != NULL
-		&& array_get(tmp, 0) != NULL
-		&& packet_count > 1
-	) {
-		memcpy(&(packet[1]), array_get(tmp, 0), sizeof(struct packet) * (packet_count - 1));
+			if (!(packet_isnext(prev, curr)))
+				abort();
+		}
+		array_free(tmp);
 	}
-
-skip:
-	array_free(tmp);
-
-	struct llnode *ll = NULL;
-	llnode_new(&ll, PACKET_SIZE, NULL);
-	llnode_add(&ll, &(packet[0]));
-
-	for (size_t i = 1; i < packet_count; i++) {
-		//if (!(packet_isnext(&(packet[i-1]), &(packet[i]))))
-		//	abort();
-		llnode_add(&ll, &(packet[i]));
-	}
-
-	free(packet);
 
 	array_new(packets_getptr_packets(ptr), ll);
 	llnode_free(ll);
