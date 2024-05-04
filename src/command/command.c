@@ -77,7 +77,6 @@ void command_strip(struct array *arr, struct array **ret)
 	struct llnode *ll = NULL;
 	llnode_new(&ll, sizeof(char), NULL);
 
-
 	for (size_t i = skip; 1; i++) {
 		char *tmp = array_get(arr, i);
 		if (tmp == NULL)
