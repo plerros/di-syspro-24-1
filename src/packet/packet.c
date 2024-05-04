@@ -7,13 +7,48 @@
 #include "packet.h"
 #include "assert.h"
 
+#define PAKET_DATA_SIZE (PACKET_SIZE - (3 * sizeof(size_t)))
+
 struct packet
 {
 	size_t data_sum;
 	size_t element_size; // of the source data
 	size_t index;
-	char data[PACKET_SIZE - (3 * sizeof(size_t))];
+	char data[PAKET_DATA_SIZE];
 };
+
+
+size_t packet_get_datasum(struct packet *ptr)
+{
+	if (ptr == NULL)
+		return 0;
+
+	return ptr->data_sum;
+}
+
+size_t packet_get_elementsize(struct packet *ptr)
+{
+	if (ptr == NULL)
+		return 0;
+
+	return ptr->element_size;
+}
+
+size_t packet_get_index(struct packet *ptr)
+{
+	if (ptr == NULL)
+		return 0;
+
+	return ptr->index;
+}
+
+char *packet_get_data(struct packet *ptr)
+{
+	if (ptr == NULL)
+		return 0;
+
+	return &(ptr->data[0]);
+}
 
 void pack(struct array *ptr, struct array **packets)
 {
@@ -22,32 +57,23 @@ void pack(struct array *ptr, struct array **packets)
 	OPTIONAL_ASSERT(packets != NULL);
 	OPTIONAL_ASSERT(*packets == NULL);
 
-
 	if (packets == NULL)
 		return;
 
 	struct llnode *ll = NULL;
 	llnode_new(&ll, sizeof(struct packet), NULL);
 
-	size_t size = 0;
-	size_t element_size = 0;
-	char *data = NULL;
-
-	if (ptr != NULL) {
-		size = ptr->size;
-		element_size = ptr->element_size;
-		data = (char*)array_get(ptr, 0);
-	}
+	char *data = (char*)array_get(ptr, 0);
 
 	struct packet tmp;
-	tmp.data_sum = size;
+	tmp.data_sum = array_get_size(ptr);
 	tmp.index = 0;
-	tmp.element_size = element_size;
+	tmp.element_size = array_get_elementsize(ptr);
 
-	for (size_t i = 0; i < size;) {
+	for (size_t i = 0; i < tmp.data_sum;) {
 		size_t current_size = sizeof(tmp.data);
-		if (current_size >  size - i)
-			current_size = size - i;
+		if (current_size >  tmp.data_sum - i)
+			current_size = tmp.data_sum - i;
 
 		if (data != NULL) {
 			memset(tmp.data, 0, sizeof(tmp.data));
@@ -78,21 +104,13 @@ void unpack(struct array *packets, struct array **ptr)
 	struct llnode *ll = NULL;
 	llnode_new(&ll, sizeof(char), NULL);
 
-	size_t datapack = 0;
-	size_t sum = 0;
-	size_t element_size = 0;
+	size_t sum = packet_get_datasum(&arr[0]);
 
-	if (arr != NULL) {
-		datapack = sizeof(arr[0].data);
-		sum = arr[0].data_sum;
-		element_size = arr[0].element_size;
-	}
-
-	for (size_t i=0, j=0; i * datapack + j < sum;){
+	for (size_t i=0, j=0; i * PAKET_DATA_SIZE + j < sum;){
 		llnode_add(&ll, &(arr[i].data[j]));
 
 		j++;
-		if (j >= datapack) {
+		if (j >= PAKET_DATA_SIZE) {
 			i++;
 			j = 0;
 		}
@@ -101,7 +119,7 @@ void unpack(struct array *packets, struct array **ptr)
 	array_new(ptr, ll);
 	llnode_free(ll);
 
-	(*ptr)->element_size = element_size;
+	(*ptr)->element_size = packet_get_elementsize(&(arr[0]));
 }
 
 bool packet_isnext(struct packet *a, struct packet *b)
@@ -109,15 +127,13 @@ bool packet_isnext(struct packet *a, struct packet *b)
 	OPTIONAL_ASSERT(a != NULL);
 	OPTIONAL_ASSERT(b != NULL);
 
-// TODO
-
-	if (a->data_sum != b->data_sum)
+	if (packet_get_datasum(a) != packet_get_datasum(b))
 		return false;
 
-	if (a->element_size != b->element_size)
+	if (packet_get_elementsize(a) != packet_get_elementsize(b))
 		return false;
 
-	if (! (a->index + 1 == b->index))
+	if (! (packet_get_index(a) + 1 == packet_get_index(b)))
 		return false;
 
 	return true;
@@ -144,53 +160,48 @@ void packets_free(struct packets *ptr)
 	if (ptr == NULL)
 		return;
 
-	if (ptr->packets != NULL)
-		array_free(ptr->packets);
+	array_free(packets_get_packets(ptr));
 
 	free(ptr);
+}
+
+struct array **packets_getptr_packets(struct packets *ptr)
+{
+	if (ptr == NULL)
+		return NULL;
+
+	return &(ptr->packets);
+}
+
+struct array *packets_get_packets(struct packets *ptr)
+{
+	if (ptr == NULL)
+		return NULL;
+
+	return ptr->packets;
 }
 
 void packets_pack(struct packets *ptr, struct array *src)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
-
-	struct array **packets = NULL;
-
-	if (ptr != NULL)
-		packets = &(ptr->packets);
-
-	pack(src, packets);
+	pack(src, packets_getptr_packets(ptr));
 }
 
 void packets_unpack(struct packets *ptr, struct array **dst)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
-	struct array *packets = NULL;
-
-	if (ptr != NULL)
-		packets = ptr->packets;
-
-	unpack(packets, dst);
+	unpack(packets_get_packets(ptr), dst);
 }
 
 void packets_send(struct packets *ptr, struct wopipe *pipe)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
-	struct array *packets = NULL;
-
-	if (ptr != NULL)
-		packets = ptr->packets;
-
-	wopipe_write(pipe, packets);
+	wopipe_write(pipe, packets_get_packets(ptr));
 }
 
 void packets_receive(struct packets *ptr, struct ropipe *pipe)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
-
-	struct array **dst = NULL;
-	if (ptr != NULL)
-		dst = &(ptr->packets);
 
 	struct array *tmp = NULL;
 
@@ -219,7 +230,7 @@ void packets_receive(struct packets *ptr, struct ropipe *pipe)
 	array_free(tmp);
 	tmp = NULL;
 
-	ropipe_read(pipe, &tmp, PACKET_SIZE, packet_count);
+	ropipe_read(pipe, &tmp, PACKET_SIZE, packet_count-1);
 
 	struct pakcet *packet1 = NULL;
 
@@ -240,13 +251,13 @@ skip:
 	llnode_add(&ll, &(packet[0]));
 
 	for (size_t i = 1; i < packet_count; i++) {
-		if (!(packet_isnext(&(packet[i-1]), &(packet[i]))))
-			abort();
+		//if (!(packet_isnext(&(packet[i-1]), &(packet[i]))))
+		//	abort();
 		llnode_add(&ll, &(packet[i]));
 	}
 
 	free(packet);
 
-	array_new(dst, ll);
+	array_new(packets_getptr_packets(ptr), ll);
 	llnode_free(ll);
 }

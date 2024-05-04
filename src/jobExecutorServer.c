@@ -15,8 +15,9 @@ int main()
 	struct ropipe *pipe = NULL;
 	ropipe_new(&pipe, PIPE_NAME);
 
-	while (1) {
-		sleep(2);
+	bool exit_flag = false;
+
+	while (!exit_flag) {
 
 		struct packets *p = NULL;
 		packets_new(&p);
@@ -33,7 +34,7 @@ int main()
 
 			if (cmd_exit == command_recognize(arr)) {
 				printf("RECEIVED EXIT\n");
-				break;
+				exit_flag = true;
 			}
 		}
 

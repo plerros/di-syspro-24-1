@@ -12,7 +12,7 @@ int command_recognize(struct array *arr)
 
 	for (int i = cmd_issueJob; i <= cmd_exit; i++) {
 		size_t len = strlen(commands[i]) + 1;
-		if (len != arr->element_size * arr->size)
+		if (len != array_get_elementsize(arr) * array_get_size(arr))
 			continue;
 
 		int rc = memcmp(commands[i], input, len);

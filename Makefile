@@ -41,6 +41,7 @@ CPPFLAGS ?= $(INC_FLAGS) -MMD -MP
 all: $(SERVER_EXEC) $(CLIENT_EXEC)
 
 $(SERVER_EXEC): $(S_OBJS) Makefile ./src/configuration.h ./src/configuration_adv.h
+	rm -f mypipe
 	$(CC) $(WARNINGS) $(DEBUG) $(OPTIMIZE) $(LFLAGS) $(S_OBJS) -o $@ $(LDFLAGS) $(LIBS)
 
 $(CLIENT_EXEC): $(C_OBJS) Makefile ./src/configuration.h ./src/configuration_adv.h

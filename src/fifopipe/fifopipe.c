@@ -92,17 +92,10 @@ static void pipe_write(struct fifopipe *ptr, struct array *src)
 		fd = ptr->fd;
 	}
 
-	char *data = NULL;
-	size_t size = 0;
-	size_t element_size = 0;
+	char *data = (char *)array_get(src, 0);
+	size_t element_size = array_get_elementsize(src);
 
-	if (src != NULL) {
-		data = (char*)src->data;
-		size = src->size;
-		element_size = src->element_size;
-	}
-
-	for (size_t i = 0; i < size; i += 1)
+	for (size_t i = 0; i < array_get_size(src); i += 1)
 		write(fd, &(data[i * element_size]), element_size);
 }
 

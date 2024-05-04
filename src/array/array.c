@@ -61,11 +61,28 @@ void array_new(struct array **ptr, struct llnode *ll)
 void *array_get(struct array *ptr, size_t pos)
 {
 	if (ptr == NULL)
-		abort();
+		return NULL;
 
 	if (pos >= ptr->size)
 		return NULL;
 
 	unsigned char *data = ptr->data;
+	if (data == NULL)
+		return NULL;
+
 	return(&(data[pos * ptr->element_size]));
+}
+
+size_t array_get_size(struct array *ptr)
+{
+	if (ptr == NULL)
+		return 0;
+	return ptr->size;
+}
+
+size_t array_get_elementsize(struct array *ptr)
+{
+	if (ptr == NULL)
+		return 0;
+	return ptr->element_size;
 }

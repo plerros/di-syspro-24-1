@@ -14,6 +14,9 @@ struct packets
 void packets_new(struct packets **ptr);
 void packets_free(struct packets *ptr);
 
+struct array *packets_get_packets(struct packets *ptr);
+struct array **packets_getptr_packets(struct packets *ptr);
+
 void packets_pack(struct packets *ptr, struct array *src);
 void packets_unpack(struct packets *ptr, struct array **dst);
 
