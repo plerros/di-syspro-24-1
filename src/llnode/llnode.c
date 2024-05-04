@@ -87,5 +87,7 @@ void *llnode_get(struct llnode *ptr, size_t index)
 		size_t offset = index * ptr->element_size;
 		return (ptr->data + offset);
 	}
+	if (ptr->next == NULL)
+		return NULL;
 	return (llnode_get(ptr->next, index - ptr->logical_size));
 }

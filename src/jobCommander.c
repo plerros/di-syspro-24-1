@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "configuration.h"
 
@@ -8,55 +10,86 @@
 #include "array.h"
 #include "fifopipe.h"
 #include "packet.h"
-#include <unistd.h>
+#include "command.h"
 
-int main()
+int main(int argc, char *argv[])
 {
-	struct wopipe *pipe = NULL;
-	wopipe_new(&pipe, PIPE_NAME);
+	// Create Server Process if missing
+	if (access(TXT_NAME, F_OK) != 0) {
+		pid_t pid = fork();
+		if (pid < 0)
+			abort();
 
-
-	char str_lorem[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
-Curabitur turpis velit, efficitur sit amet consectetur nec, porta congue tellus. \
-Morbi in turpis ac erat tristique mollis. Fusce tincidunt orci vel nisl \
-ullamcorper efficitur. Nam ac elit non nibh fringilla lacinia eget at purus. \
-Morbi fermentum sit amet eros at imperdiet. Praesent porta enim ut tincidunt \
-semper. Quisque pharetra, sem non ultricies pretium, ex libero malesuada est, \
-quis porta felis erat id massa. Nullam at lorem eleifend, bibendum nunc id, \
-lobortis ligula. Aliquam semper augue sit amet justo tempus, sit amet sodales dui \
-pretium. Aliquam sed leo libero. Sed accumsan, ex non porta hendrerit, metus nibh \
-sollicitudin odio, vitae molestie orci neque nec lacus. Donec ursus magna eget \
-dolor commodo, sed mattis ipsum laoreet.";
-
-	char str_exit[] = "exit";
-
-	char *str = &str_lorem[0];
-
-	for (int j = 3; j > 0; j--) {
-		struct llnode *ll = NULL;
-		llnode_new(&ll, sizeof(char), NULL);
-
-		if (j == 1)
-			str = &str_exit[0];
-
-		printf("SENDING: %s\n", str);
-
-		for (size_t i = 0; i < strlen(str) + 1; i++)
-			llnode_add(&ll, &(str[i]));
-
-		struct array *arr = NULL;
-		array_new(&arr, ll);
-		llnode_free(ll);
-
-		struct packets *p = NULL;
-		packets_new(&p);
-		packets_pack(p, arr);
-
-		packets_send(p, pipe);
-		packets_free(p);
-
-		array_free(arr);
+		int rc = 0;
+		if (pid == 0)
+			rc = execl(SERVER_NAME, SERVER_NAME, NULL);
+		if (rc == -1) {
+			perror("ERROR");
+			exit(1);
+		}
 	}
-	wopipe_free(pipe);
+
+	// Wait for jobExecutorServer.txt to open
+	int retries = 0;
+	int retries_max = 10;
+	while (access(TXT_NAME, F_OK) != 0 && retries < retries_max) {
+		switch (retries) {
+			case 0:
+				break;
+			case 1:
+				printf("Waiting for %s\n", TXT_NAME);
+				break;
+			default:
+				printf("%d / %d\n", retries, retries_max);
+		}
+		sleep(1);
+		retries++;
+	}
+
+	// Initialize pipes
+	struct wopipe *to_exec = NULL;
+	wopipe_new(&to_exec, CMD_TO_EXEC);
+	struct ropipe *from_exec = NULL;
+	ropipe_new(&from_exec, EXEC_TO_CMD);
+
+	// Parse args
+	struct llnode *ll = NULL;
+	llnode_new(&ll, sizeof(char), NULL);
+
+	for (int i = 1; i < argc; i++) {
+		for(size_t j = 0; j < strlen(argv[i]); j++) {
+			llnode_add(&ll, &(argv[i][j]));
+		}
+		// Add back space character between arguments
+		if (i + 1 < argc) {
+			char tmp = ' ';
+			llnode_add(&ll, &tmp);
+		}
+	}
+	// Add back null character to denote end of string
+	{
+		char tmp = '\0';
+		llnode_add(&ll, &tmp);
+	}
+
+	struct array *arr = NULL;
+	array_new(&arr, ll);
+	llnode_free(ll);
+
+	if (command_recognize(arr) == cmd_invalid)
+		fprintf(stderr, "Invalid Command\n");
+
+	struct packets *p = NULL;
+	packets_new(&p);
+	packets_pack(p, arr);
+
+	// Send
+	packets_send(p, to_exec);
+	packets_free(p);
+
+	array_free(arr);
+
+	wopipe_free(to_exec);
+	ropipe_free(from_exec);
 	return 0;
 }

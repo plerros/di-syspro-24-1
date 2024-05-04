@@ -222,12 +222,9 @@ void packets_receive(struct packets *ptr, struct ropipe *pipe)
 
 	if (pkt != NULL && packet_get_packetcount(pkt) > 0) {
 		size_t packet_count = packet_get_packetcount(pkt);
-		size_t remaining = 0;
-		if (packet_count > 0)
-			remaining = packet_count - 1;
-		ropipe_read(pipe, &tmp, PACKET_SIZE, remaining);
+		ropipe_read(pipe, &tmp, PACKET_SIZE, packet_count - 1);
 
-		for (size_t i = packet_count - remaining, j = 0; i < packet_count; i++, j++) {
+		for (size_t i = 1, j = 0; i < packet_count; i++, j++) {
 			llnode_add(&ll, array_get(tmp, j));
 			struct packet *curr = (struct packet *)llnode_get(ll, i);
 			struct packet *prev = (struct packet *)llnode_get(ll, i - 1);

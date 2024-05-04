@@ -41,17 +41,22 @@ CPPFLAGS ?= $(INC_FLAGS) -MMD -MP
 
 all: $(SERVER_EXEC) $(CLIENT_EXEC)
 
-$(SERVER_EXEC): $(S_OBJS) Makefile ./src/configuration.h ./src/configuration_adv.h
-	rm -f mypipe
+$(SERVER_EXEC): $(S_OBJS) Makefile ./src/configuration.h ./src/configuration_adv.h cleantmp
 	$(CC) $(WARNINGS) $(DEBUG) $(OPTIMIZE) $(LFLAGS) $(S_OBJS) -o $@ $(LDFLAGS) $(LIBS)
 
-$(CLIENT_EXEC): $(C_OBJS) Makefile ./src/configuration.h ./src/configuration_adv.h
+$(CLIENT_EXEC): $(C_OBJS) Makefile ./src/configuration.h ./src/configuration_adv.h cleantmp
 	$(CC) $(WARNINGS) $(DEBUG) $(OPTIMIZE) $(LFLAGS) $(C_OBJS) -o $@ $(LDFLAGS) $(LIBS)
 
 # c source
 $(BUILD_DIR)/%.c.o: %.c Makefile
 	$(MKDIR_P) $(dir $@)
 	$(CC) $(CPPFLAGS) $(WARNINGS) $(DEBUG) $(OPTIMIZE) -c $< -o $@
+
+cleantmp:
+	rm -f cmd_to_exec
+	rm -f exec_to_cmd
+	rm -f jobExecutorServer.txt
+	rm -f vgcore*
 
 .PHONY: clean
 
