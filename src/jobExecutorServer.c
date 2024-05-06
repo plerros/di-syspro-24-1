@@ -11,71 +11,87 @@
 #include "command.h"
 #include <unistd.h>
 
-int main()
+void create_txt()
 {
-	// Create jobExecutorServer.txt
 	FILE *txt;
 	txt = fopen(TXT_NAME, "w");
 	fprintf(txt, "%d", getpid());
 	fclose(txt);
+}
+
+struct executor_data
+{
+	struct ropipe *from_cmd;
+	struct wopipe *to_cmd;
+	bool exit_flag;
+};
+
+void executor_processcmd(struct executor_data *exd, struct array *command)
+{
+	if (command == NULL)
+		return;
+
+	struct array *stripped = NULL;
+	command_strip(command, &stripped);
+
+	array_print_str(command);
+	array_print_str(stripped);
+
+	switch (command_recognize(command)) {
+		case cmd_empty:
+			break;
+		case cmd_invalid:
+			fprintf(stderr, "Invalid Command\n");
+			break;
+		case cmd_issueJob:
+			break;
+		case cmd_setConcurrency:
+			break;
+		case cmd_stop:
+			break;
+		case cmd_pollrunning:
+			break;
+		case cmd_pollqueued:
+			break;
+		case cmd_exit:
+			exd->exit_flag = true;
+			break;
+		default:
+			abort();
+	}
+
+	array_free(stripped);
+}
+
+int main()
+{
+	create_txt();
+
+	struct executor_data exd;
+	exd.from_cmd  = NULL;
+	exd.to_cmd    = NULL;
+	exd.exit_flag = false;
 
 	// Initialize named pipes
-	struct ropipe *from_cmd = NULL;
-	ropipe_new(&from_cmd, CMD_TO_EXEC);
-	struct wopipe *to_cmd = NULL;
-	wopipe_new(&to_cmd, EXEC_TO_CMD);
+	ropipe_new(&(exd.from_cmd), CMD_TO_EXEC);
+	wopipe_new(&(exd.to_cmd), EXEC_TO_CMD);
 
-	bool exit_flag = false;
-
-	while (!exit_flag) {
-
+	while (!exd.exit_flag) {
 		struct packets *p = NULL;
 		packets_new(&p);
-		packets_receive(p, from_cmd);
+		packets_receive(p, exd.from_cmd);
 
 		struct array *command = NULL;
-		struct array *stripped = NULL;
 		packets_unpack(p, &command);
 		packets_free(p);
 
-		if (command == NULL)
-			continue;
+		executor_processcmd(&exd, command);
 
-		command_strip(command, &stripped);
-
-		array_print_str(command);
-		array_print_str(stripped);
-
-		switch (command_recognize(command)) {
-			case cmd_empty:
-				break;
-			case cmd_invalid:
-				fprintf(stderr, "Invalid Command\n");
-				break;
-			case cmd_issueJob:
-				break;
-			case cmd_setConcurrency:
-				break;
-			case cmd_stop:
-				break;
-			case cmd_pollrunning:
-				break;
-			case cmd_pollqueued:
-				break;
-			case cmd_exit:
-				exit_flag = true;
-				break;
-			default:
-				printf("unaccounted %d\n", command_recognize(command));
-				abort();
-		}
-
-		array_free(stripped);
 		array_free(command);
 	}
 
-	ropipe_free(from_cmd);
-	wopipe_free(to_cmd);
+	ropipe_free(exd.from_cmd);
+	wopipe_free(exd.to_cmd);
 	remove(TXT_NAME);
 	return 0;
 }
