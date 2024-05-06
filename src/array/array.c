@@ -48,14 +48,13 @@ void array_new(struct array **ptr, struct llnode *ll)
 	// copy
 	for (size_t source_offset = new->element_size * new->size; ll != NULL; ll = ll->next) {
 		size_t llnode_size = ll->logical_size * ll->element_size;
-		
+
 		source_offset -= llnode_size;
 		memcpy(arr + source_offset, ll->data, llnode_size);
 	}
 	new->data = arr;
 
 	*ptr = new;
-	return;
 }
 
 void *array_get(struct array *ptr, size_t pos)
@@ -92,4 +91,18 @@ void array_print_str(struct array *arr)
 	char *str = (char*) array_get(arr, 0);
 	if (str != NULL)
 		printf("%s\n", str);
+}
+
+void array_copy(struct array *src, struct array *dst)
+{
+	OPTIONAL_ASSERT(src != NULL);
+	OPTIONAL_ASSERT(dst != NULL);
+
+	if (src == NULL)
+		return;
+
+	if (dst == NULL)
+		return;
+
+	memcpy(dst->data, src->data, src->size * src->element_size);
 }
