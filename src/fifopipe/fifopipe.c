@@ -99,6 +99,46 @@ static void pipe_write(struct fifopipe *ptr, struct array *src)
 		write(fd, &(data[i * element_size]), element_size);
 }
 
+/*
+ * read_werr()
+ *
+ * read with errors
+ * auto-handle some errors to reduce clutter on parent function
+ */
+
+ssize_t read_werr(int fd, void *buf, size_t count)
+{
+	ssize_t rc = read(fd, buf, count);
+	if (rc != -1)
+		return rc;
+
+	switch (errno) {
+		case EAGAIN:
+			break;
+		default:
+			perror("ERROR");
+			exit(1);
+	}
+	return rc;
+}
+
+void msg_print(
+	__attribute__((unused)) size_t msg_size,
+	__attribute__((unused)) ssize_t rc,
+	__attribute__((unused)) char *str)
+{
+	if (rc < 0)
+		return;
+
+#ifdef DEBUG
+	printf("%ld %ld ", msg_size, rc);
+	for (size_t j = 0; j < msg_size; j++) {
+		printf("%c.", str[j]);
+	}
+	printf("\n");
+#endif
+}
+
 static void pipe_read(struct fifopipe *ptr, struct array **dst, size_t msg_size, size_t msg_count)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
@@ -119,36 +159,11 @@ static void pipe_read(struct fifopipe *ptr, struct array **dst, size_t msg_size,
 		abort();
 
 	for (size_t i = 0; i < msg_count; i++) {
-		bool break_flag = false;
-
-		ssize_t rc = read(fd, tmp, msg_size);
-
-		if (rc == 0) {
-			// EOF
-			break;
-		}
-		else if (rc < 0 || (size_t) rc < msg_size) {
-			switch (errno) {
-				case EAGAIN:
-					break_flag = true;
-					break;
-				default:
-					perror("ERROR");
-					exit(1);
-			}
-		}
-		if (break_flag)
+		ssize_t rc = read_werr(fd, tmp, msg_size);
+		if ((size_t) rc != msg_size)
 			break;
 
-
-		if (rc > 0) {
-			printf("%ld %ld ", rc, msg_size);
-			for (size_t j = 0; j < msg_size; j++) {
-				printf("%c.", tmp[j]);
-			}
-			printf("\n");
-		}
-
+		msg_print(msg_size, rc, tmp);
 		llnode_add(&ll, tmp);
 	}
 

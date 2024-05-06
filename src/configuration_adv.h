@@ -1,6 +1,8 @@
 #ifndef SYSPROG24_1_CONFIGURATION_ADV_H
 #define SYSPROG24_1_CONFIGURATION_ADV_H
 
+//#define DEBUG
+
 #if SAFETY_CHECKS
 #define OPTIONAL_ASSERT(x) assert(x)
 #include <assert.h>

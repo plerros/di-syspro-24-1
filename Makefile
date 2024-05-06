@@ -48,7 +48,7 @@ $(CLIENT_EXEC): $(C_OBJS) Makefile ./src/configuration.h ./src/configuration_adv
 	$(CC) $(WARNINGS) $(DEBUG) $(OPTIMIZE) $(LFLAGS) $(C_OBJS) -o $@ $(LDFLAGS) $(LIBS)
 
 # c source
-$(BUILD_DIR)/%.c.o: %.c Makefile
+$(BUILD_DIR)/%.c.o: %.c Makefile ./src/configuration.h ./src/configuration_adv.h cleantmp
 	$(MKDIR_P) $(dir $@)
 	$(CC) $(CPPFLAGS) $(WARNINGS) $(DEBUG) $(OPTIMIZE) -c $< -o $@
 
