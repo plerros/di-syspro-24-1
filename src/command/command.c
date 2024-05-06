@@ -29,6 +29,7 @@ struct cmd commands[] = {
 	{"poll queued ",    cmd_pollqueued,     true},
 	{"exit",            cmd_exit,           true}
 };
+#include <stdlib.h>
 
 int command_recognize(struct array *arr)
 {
@@ -37,8 +38,10 @@ int command_recognize(struct array *arr)
 	char empty[] = "\0";
 
 	char *input = array_get(arr, 0);
-	if (input == NULL)
+	if (input == NULL && arr_total_len == 0) {
 		input = &empty[0];
+		arr_total_len = 1;
+	}
 
 	for (size_t i = cmd_empty; i <= cmd_exit; i++) {
 		size_t len = strlen(commands[i].name);
