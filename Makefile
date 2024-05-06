@@ -13,7 +13,7 @@ CC := $(shell \
 	done \
 )
 
-WARNINGS := -Wall -Wextra
+WARNINGS := -Wall -Wextra -Wconversion
 DEBUG := # -fsanitize=thread
 
 OPTIMIZE := -O2
@@ -60,8 +60,8 @@ cleantmp:
 
 .PHONY: clean
 
-clean:
-	$(RM) -r $(BUILD_DIR) $(SERVER_EXEC) $(CLIENT_EXEC) mypipe
+clean: cleantmp
+	$(RM) -r $(BUILD_DIR) $(SERVER_EXEC) $(CLIENT_EXEC)
 
 -include $(DEPS)
 

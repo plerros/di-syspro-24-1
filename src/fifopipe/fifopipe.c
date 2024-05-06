@@ -105,7 +105,7 @@ static void pipe_read(struct fifopipe *ptr, struct array **dst, size_t msg_size,
 	OPTIONAL_ASSERT(dst != NULL);
 	OPTIONAL_ASSERT(*dst == NULL);
 
-	pipe_open(ptr, O_RDONLY);
+	pipe_open(ptr, O_RDONLY | O_NONBLOCK);
 
 	int fd = -1;
 	if (ptr != NULL)
@@ -119,15 +119,34 @@ static void pipe_read(struct fifopipe *ptr, struct array **dst, size_t msg_size,
 		abort();
 
 	for (size_t i = 0; i < msg_count; i++) {
-		size_t rc = read(fd, tmp, msg_size);
+		bool break_flag = false;
+
+		ssize_t rc = read(fd, tmp, msg_size);
 
 		if (rc == 0) {
 			// EOF
 			break;
 		}
-		else if (rc < msg_size) {
-			perror("ERROR");
-			exit(1);
+		else if (rc < 0 || (size_t) rc < msg_size) {
+			switch (errno) {
+				case EAGAIN:
+					break_flag = true;
+					break;
+				default:
+					perror("ERROR");
+					exit(1);
+			}
+		}
+		if (break_flag)
+			break;
+
+
+		if (rc > 0) {
+			printf("%ld %ld ", rc, msg_size);
+			for (size_t j = 0; j < msg_size; j++) {
+				printf("%c.", tmp[j]);
+			}
+			printf("\n");
 		}
 
 		llnode_add(&ll, tmp);

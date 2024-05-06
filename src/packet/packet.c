@@ -1,5 +1,6 @@
-#include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "configuration.h"
 
@@ -132,14 +133,26 @@ bool packet_isnext(struct packet *a, struct packet *b)
 	OPTIONAL_ASSERT(a != NULL);
 	OPTIONAL_ASSERT(b != NULL);
 
-	if (packet_get_datasum(a) != packet_get_datasum(b))
+	if (packet_get_datasum(a) != packet_get_datasum(b)) {
+		printf("ERROR:");
+		printf("Packet datasum mismatch:");
+		printf("%ld != %ld", packet_get_datasum(a), packet_get_datasum(b));
 		return false;
+	}
 
-	if (packet_get_elementsize(a) != packet_get_elementsize(b))
+	if (packet_get_elementsize(a) != packet_get_elementsize(b)) {
+		printf("ERROR:");
+		printf("Packet element size mismatch:");
+		printf("%ld != %ld", packet_get_elementsize(a), packet_get_elementsize(b));
 		return false;
+	}
 
-	if (! (packet_get_index(a) + 1 == packet_get_index(b)))
+	if (! (packet_get_index(a) + 1 == packet_get_index(b))) {
+		printf("ERROR:");
+		printf("Packet index mismatch:");
+		printf("%ld + 1 != %ld", packet_get_index(a), packet_get_index(b));
 		return false;
+	}
 
 	return true;
 }
@@ -222,17 +235,19 @@ void packets_receive(struct packets *ptr, struct ropipe *pipe)
 
 	if (pkt != NULL && packet_get_packetcount(pkt) > 0) {
 		size_t packet_count = packet_get_packetcount(pkt);
-		ropipe_read(pipe, &tmp, PACKET_SIZE, packet_count - 1);
+		while (llnode_getsize(ll) < packet_count) {
+			ropipe_read(pipe, &tmp, PACKET_SIZE, packet_count - llnode_getsize(ll));
+			for (size_t i = 0; i < array_get_size(tmp); i++) {
+				llnode_add(&ll, array_get(tmp, i));
+				struct packet *curr = (struct packet *)llnode_get(ll, llnode_getsize(ll) - 1);
+				struct packet *prev = (struct packet *)llnode_get(ll, llnode_getsize(ll) - 2);
 
-		for (size_t i = 1, j = 0; i < packet_count; i++, j++) {
-			llnode_add(&ll, array_get(tmp, j));
-			struct packet *curr = (struct packet *)llnode_get(ll, i);
-			struct packet *prev = (struct packet *)llnode_get(ll, i - 1);
-
-			if (!(packet_isnext(prev, curr)))
-				abort();
+				if (!(packet_isnext(prev, curr)))
+					abort();
+			}
+			array_free(tmp);
+			tmp = NULL;
 		}
-		array_free(tmp);
 	}
 
 	array_new(packets_getptr_packets(ptr), ll);

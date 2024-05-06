@@ -15,4 +15,5 @@ void array_new(struct array **ptr, struct llnode *ll);
 void *array_get(struct array *ptr, size_t pos);
 size_t array_get_size(struct array *ptr);
 size_t array_get_elementsize(struct array *ptr);
+void array_print_str(struct array *arr);
 #endif /*SYSPROG24_1_ARRAY_H*/

@@ -86,3 +86,10 @@ size_t array_get_elementsize(struct array *ptr)
 		return 0;
 	return ptr->element_size;
 }
+
+void array_print_str(struct array *arr)
+{
+	char *str = (char*) array_get(arr, 0);
+	if (str != NULL)
+		printf("%s\n", str);
+}

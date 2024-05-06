@@ -15,24 +15,28 @@
 struct cmd
 {
 	char name[16];
+	int enumval;
 	bool exact_length;
 };
 
 struct cmd commands[] = {
-	{"invalid ", false},
-	{"issueJob ", false},
-	{"setConcurrency ", false},
-	{"stop ", false},
-	{"poll running ", true},
-	{"poll queued ", true},
-	{"exit", true}
+	{"issueJob ",       cmd_issueJob,       false},
+	{"setConcurrency ", cmd_setConcurrency, false},
+	{"stop ",           cmd_stop,           false},
+	{"poll running ",   cmd_pollrunning,    true},
+	{"poll queued ",    cmd_pollqueued,     true},
+	{"exit",            cmd_exit,           true}
 };
 
 int command_recognize(struct array *arr)
 {
+	size_t arr_total_len = array_get_elementsize(arr) * array_get_size(arr);
+	if (arr_total_len == 0)
+		return cmd_empty;
+
 	char *input = array_get(arr, 0);
 
-	for (int i = cmd_issueJob; i <= cmd_exit; i++) {
+	for (size_t i = 0; i <= cmd_exit - cmd_issueJob; i++) {
 		size_t len = strlen(commands[i].name);
 		if (commands[i].exact_length)
 			len++;
@@ -46,7 +50,7 @@ int command_recognize(struct array *arr)
 
 		int rc = memcmp(commands[i].name, input, len);
 		if (rc == 0)
-			return i;
+			return commands[i].enumval;
 	}
 
 	return cmd_invalid;
@@ -58,9 +62,10 @@ void command_strip(struct array *arr, struct array **ret)
 	OPTIONAL_ASSERT(ret != NULL);
 	OPTIONAL_ASSERT(*ret == NULL);
 
-	size_t command_length = strlen(commands[command_recognize(arr)].name);
-	if (command_recognize(arr) == cmd_invalid)
-		command_length = 0;
+	size_t command_length = 0;
+	if (command_recognize(arr) != cmd_invalid && command_recognize(arr) != cmd_empty) {
+		strlen(commands[command_recognize(arr)].name);
+	}
 
 	size_t skip = command_length;
 	while (1) {

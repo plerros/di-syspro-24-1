@@ -33,27 +33,24 @@ int main()
 		packets_new(&p);
 		packets_receive(p, from_cmd);
 
-		struct array *arr = NULL;
-		packets_unpack(p, &arr);
+		struct array *command = NULL;
+		struct array *stripped = NULL;
+		packets_unpack(p, &command);
 		packets_free(p);
 
-		if (arr == NULL)
+		if (command == NULL)
 			continue;
 
-		char *str = (char*) array_get(arr, 0);
-		if (str != NULL)
-			printf("%s\n", str);
+		command_strip(command, &stripped);
 
-		struct array *arr2 = NULL;
+		array_print_str(command);
+		array_print_str(stripped);
 
-		command_strip(arr, &arr2);
-
-		char *str2 = (char*) array_get(arr2, 0);
-		if (str2 != NULL)
-			printf("%s\n", str2);
-
-		switch (command_recognize(arr)) {
+		switch (command_recognize(command)) {
+			case cmd_empty:
+				break;
 			case cmd_invalid:
+				fprintf(stderr, "Invalid Command\n");
 				break;
 			case cmd_issueJob:
 				break;
@@ -69,11 +66,12 @@ int main()
 				exit_flag = true;
 				break;
 			default:
+				printf("unaccounted %d\n", command_recognize(command));
 				abort();
 		}
 
-		array_free(arr2);
-		array_free(arr);
+		array_free(stripped);
+		array_free(command);
 	}
 
 	ropipe_free(from_cmd);
