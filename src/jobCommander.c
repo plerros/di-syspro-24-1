@@ -12,7 +12,7 @@
 #include "packet.h"
 #include "command.h"
 
-void retry_print(int retries, int retries_max)
+void print_txtreadretry(int retries, int retries_max)
 {
 	switch (retries) {
 		case 0:
@@ -31,7 +31,7 @@ void wait_for_txt(int n)
 		if (access(TXT_NAME, F_OK) == 0)
 			return;
 
-		retry_print(i, n);
+		print_txtreadretry(i, n);
 		sleep(1);
 	}
 }

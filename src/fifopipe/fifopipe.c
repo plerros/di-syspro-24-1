@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stddef.h>
@@ -131,9 +132,12 @@ void msg_print(
 		return;
 
 #ifdef DEBUG
-	printf("%ld %ld ", msg_size, rc);
+	printf("%ld / %ld: ", rc, msg_size);
 	for (size_t j = 0; j < msg_size; j++) {
-		printf("%c.", str[j]);
+		if (isprint(str[j]))
+			printf("%c", str[j]);
+		else
+			printf(".");
 	}
 	printf("\n");
 #endif

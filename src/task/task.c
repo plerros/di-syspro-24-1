@@ -22,7 +22,7 @@ void task_new(struct task **ptr, struct array *command, unsigned int taskid)
 	new->taskid = taskid;
 	new->pid = -1;
 	new->command = NULL;
-	array_copy(command, new->command);
+	array_copy(command, &(new->command));
 
 	*ptr = new;
 }
@@ -95,13 +95,19 @@ void task_run(struct task *ptr)
 	}
 }
 
+/*
+ * Note to future self:
+ * 
+ * This function must free all pointers & set them to NULL.
+ */
+
 void task_end(struct task *ptr)
 {
 	if (ptr == NULL)
 		return;
 
 	if (ptr->pid != -1)
-		kill(ptr->pid, SIGKILL);
+		kill(ptr->pid, SIGSTOP);
 
 	ptr->pid = -1;
 	array_free(ptr->command);

@@ -93,16 +93,37 @@ void array_print_str(struct array *arr)
 		printf("%s\n", str);
 }
 
-void array_copy(struct array *src, struct array *dst)
+void array_copy(struct array *src, struct array **dst)
 {
 	OPTIONAL_ASSERT(src != NULL);
 	OPTIONAL_ASSERT(dst != NULL);
-
-	if (src == NULL)
-		return;
+	OPTIONAL_ASSERT(*dst == NULL);
 
 	if (dst == NULL)
 		return;
 
-	memcpy(dst->data, src->data, src->size * src->element_size);
+	struct array *new = malloc(sizeof(struct array));
+	if (new == NULL)
+		abort();
+
+	new->data = NULL;
+	new->element_size = 0;
+	new->size = 0;
+
+	if (src != NULL) {
+		new->element_size = src->element_size;
+		new->size = src->size;
+	}
+
+	void *arr = malloc(new->element_size * new->size);
+	if (arr == NULL && new->element_size * new->size > 0)
+		abort();
+
+	// copy
+	if (src != NULL) {
+		memcpy(arr, src->data, src->size * src->element_size);
+	}
+
+	new->data = arr;
+	*dst = new;
 }

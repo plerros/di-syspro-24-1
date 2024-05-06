@@ -24,9 +24,9 @@ struct cmd commands[] = {
 	{"",                cmd_empty,          true},
 	{"issueJob ",       cmd_issueJob,       false},
 	{"setConcurrency ", cmd_setConcurrency, false},
-	{"stop ",           cmd_stop,           false},
-	{"poll running ",   cmd_pollrunning,    true},
-	{"poll queued ",    cmd_pollqueued,     true},
+	{"stop job_",       cmd_stop,           false},
+	{"poll running",    cmd_pollrunning,    true},
+	{"poll queued",     cmd_pollqueued,     true},
 	{"exit",            cmd_exit,           true}
 };
 #include <stdlib.h>
