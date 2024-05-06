@@ -12,6 +12,30 @@
 #include "packet.h"
 #include "command.h"
 
+void retry_print(int retries, int retries_max)
+{
+	switch (retries) {
+		case 0:
+			break;
+		case 1:
+			printf("Waiting for %s\n", TXT_NAME);
+			break;
+		default:
+			printf("%d / %d\n", retries, retries_max);
+	}
+}
+
+void wait_for_txt(int n)
+{
+	for (int i = 0; i < n; i++) {
+		if (access(TXT_NAME, F_OK) == 0)
+			return;
+
+		retry_print(i, n);
+		sleep(1);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	// Create Server Process if missing
@@ -29,22 +53,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	// Wait for jobExecutorServer.txt to open
-	int retries = 0;
-	int retries_max = 10;
-	while (access(TXT_NAME, F_OK) != 0 && retries < retries_max) {
-		switch (retries) {
-			case 0:
-				break;
-			case 1:
-				printf("Waiting for %s\n", TXT_NAME);
-				break;
-			default:
-				printf("%d / %d\n", retries, retries_max);
-		}
-		sleep(1);
-		retries++;
-	}
+	wait_for_txt(10);
 
 	// Initialize pipes
 	struct wopipe *to_exec = NULL;
