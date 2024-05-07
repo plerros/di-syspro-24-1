@@ -116,8 +116,11 @@ static void pipe_write(struct fifopipe *ptr, struct array *src)
 
 	for (size_t i = 0; i < array_get_size(src); i += 1) {
 		size_t sum = 0;
-		while (sum < element_size)
-			sum += write_werr(fd, &(data[i * element_size]), element_size);
+		while (sum < element_size) {
+			ssize_t rc = write_werr(fd, &(data[i * element_size]), element_size);
+			if (rc >= 0)
+				sum += (size_t)rc;
+		}
 	}
 }
 

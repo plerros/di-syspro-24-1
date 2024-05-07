@@ -166,13 +166,13 @@ static void concat_task(struct task *t, char **str, size_t queuePosition)
 	concat(str, jobstr);
 }
 
-void taskboard_get_waiting(struct taskboard *ptr, struct array **waiting)
+size_t taskboard_get_waiting(struct taskboard *ptr, struct array **waiting)
 {
 	if (ptr == NULL)
-		return;
+		return 0;
 
 	if (ptr->tasks == NULL)
-		return;
+		return 0;
 
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
@@ -204,21 +204,24 @@ void taskboard_get_waiting(struct taskboard *ptr, struct array **waiting)
 		for(size_t i = 0; i < strlen(str); i++)
 			llnode_add(&ll, &(str[i]));
 		free(str);
+		char end = '\0';
+		llnode_add(&ll, &(end));
 	}
 
 	array_new(waiting, ll);
 	llnode_free(ll);
 
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
+	return waiting_position;
 }
 
-void taskboard_get_running(struct taskboard *ptr, struct array **running)
+size_t taskboard_get_running(struct taskboard *ptr, struct array **running)
 {
 	if (ptr == NULL)
-		return;
+		return 0;
 
 	if (ptr->tasks == NULL)
-		return;
+		return 0;
 
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
@@ -244,11 +247,63 @@ void taskboard_get_running(struct taskboard *ptr, struct array **running)
 		for(size_t i = 0; i < strlen(str); i++)
 			llnode_add(&ll, &(str[i]));
 		free(str);
+		char end = '\0';
+		llnode_add(&ll, &(end));
 	}
 
-	array_new(running, ll);
+	if (running != NULL)
+		array_new(running, ll);
+
 	llnode_free(ll);
 
+
+	sigprocmask(SIG_SETMASK, &oldmask, NULL);
+	return running_position;
+}
+
+void taskboard_run_next(struct taskboard *ptr)
+{
+	if (ptr == NULL)
+		return;
+
+	if (ptr->tasks == NULL)
+		return;
+
+	sigset_t oldmask;
+	block_sigchild(&oldmask);
+
+
+	size_t size = llnode_getsize(ptr->tasks);
+	struct task *tmp = NULL;
+
+	for (size_t i = 0; i < size; i++) {
+		tmp = (struct task *)llnode_get(ptr->tasks, i);
+		if (!task_iswaiting(tmp))
+			continue;
+	}
+
+
+	if (task_iswaiting(tmp)) {
+		pid_t pid = fork();
+		if (pid < 0)
+			abort();
+
+		int rc = 0;
+		if (pid == 0) {
+			fclose(stdout);
+			fclose(stderr);
+			rc = execlp("sh", "sh", "-c", (char *)array_get(tmp->command, 0), NULL);
+		}
+		else {
+			tmp->pid = pid;
+		}
+
+		if (rc == -1) {
+			printf("COMMAND FAILED: %s\n", (char *)array_get(tmp->command, 0));
+			perror("ERROR");
+			exit(1);
+		}
+	}
 
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 }

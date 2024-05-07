@@ -5,10 +5,13 @@
 #include <string.h>
 #include <sys/signal.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
+
 
 #include "configuration.h"
 
+#include "helper.h"
 #include "llnode.h"
 #include "array.h"
 #include "fifopipe.h"
@@ -55,6 +58,16 @@ void update_concurrency(unsigned int *concurrency, struct array *stripped)
 		tmp = UINT_MAX;
 
 	*concurrency = (unsigned int)tmp;
+}
+
+struct taskboard *global_tboard = NULL;
+
+void sigchld_handler(__attribute__((unused))int sig)
+{
+	pid_t pid;
+	while((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
+		taskboard_remove_pid(global_tboard, pid);
+	}
 }
 
 void executor_processcmd(struct executor_data *exd, struct array *command)
@@ -106,7 +119,6 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 		default:
 			abort();
 	}
-
 	if (array_get(reply, 0) == NULL) {
 		array_free(reply);
 		reply = NULL;
@@ -142,9 +154,29 @@ void mkfifo_werr(char *str)
 	}
 }
 
+void assign_work(struct executor_data *exd)
+{
+	sigset_t oldmask;
+	block_sigchild(&oldmask);
+
+	if (taskboard_get_running(exd->tboard, NULL) < exd->concurrency)
+		taskboard_run_next(exd->tboard);
+
+	sigprocmask(SIG_SETMASK, &oldmask, NULL);
+}
+
 int main()
 {
+	// Set up signal handling
+	struct sigaction sa;
+	{ // SIGCHLD
+		sigemptyset(&sa.sa_mask);
+		sa.sa_flags = 0;
+		sa.sa_handler = sigchld_handler;
+		sigaction(SIGCHLD, &sa, NULL);
+	}
 	signal(SIGPIPE, SIG_IGN);
+
 	create_txt();
 
 	struct executor_data exd;
@@ -159,6 +191,7 @@ int main()
 
 	exd.tboard = NULL;
 	taskboard_new(&(exd.tboard));
+	global_tboard = exd.tboard;
 
 	exd.concurrency = 1;
 
@@ -174,9 +207,12 @@ int main()
 
 		executor_processcmd(&exd, command);
 
+		assign_work(&exd);
+
 		array_free(command);
 	}
 
+	global_tboard = NULL;
 	taskboard_free(exd.tboard);
 	ropipe_free(exd.from_cmd);
 	wopipe_free(exd.to_cmd);

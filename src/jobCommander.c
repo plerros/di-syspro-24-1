@@ -112,6 +112,8 @@ int main(int argc, char *argv[])
 		packets_unpack(p, &reply);
 		packets_free(p);
 		retry++;
+		if (retry % 100 == 0)
+			sleep(1);
 	} while (array_get(reply, 0) == NULL && retry < 10000);
 
 	char *str = (char *) array_get(reply, 0);
