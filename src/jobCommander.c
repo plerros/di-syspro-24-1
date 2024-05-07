@@ -98,6 +98,28 @@ int main(int argc, char *argv[])
 
 	array_free(arr);
 
+	// Receive reply
+
+	struct array *reply = NULL;
+	int retry = 0;
+	do {
+		array_free(reply);
+		reply = NULL;
+
+		p = NULL;
+		packets_new(&p);
+		packets_receive(p, from_exec);
+		packets_unpack(p, &reply);
+		packets_free(p);
+		retry++;
+	} while (array_get(reply, 0) == NULL && retry < 10000);
+
+	char *str = (char *) array_get(reply, 0);
+	if (str != NULL)
+		printf("%s\n", str);
+
+	array_free(reply);
+
 	wopipe_free(to_exec);
 	ropipe_free(from_exec);
 	return 0;

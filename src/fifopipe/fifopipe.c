@@ -83,6 +83,24 @@ static void pipe_open(struct fifopipe *ptr, int flags)
 		abort();
 }
 
+ssize_t write_werr(int fd, void *buf, size_t count)
+{
+	ssize_t rc = write(fd, buf, count);
+	if (rc != -1)
+		return rc;
+
+	switch (errno) {
+		case EAGAIN:
+			break;
+		case EPIPE:
+			break;
+		default:
+			perror("ERROR");
+			exit(1);
+	}
+	return rc;
+}
+
 static void pipe_write(struct fifopipe *ptr, struct array *src)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
@@ -96,8 +114,11 @@ static void pipe_write(struct fifopipe *ptr, struct array *src)
 	char *data = (char *)array_get(src, 0);
 	size_t element_size = array_get_elementsize(src);
 
-	for (size_t i = 0; i < array_get_size(src); i += 1)
-		write(fd, &(data[i * element_size]), element_size);
+	for (size_t i = 0; i < array_get_size(src); i += 1) {
+		size_t sum = 0;
+		while (sum < element_size)
+			sum += write_werr(fd, &(data[i * element_size]), element_size);
+	}
 }
 
 /*
@@ -223,19 +244,12 @@ void ropipe_new(struct ropipe **ptr, const char *name)
 	if (ptr == NULL)
 		return;
 
-	struct ropipe *new = malloc(sizeof(struct wopipe));
+	struct ropipe *new = malloc(sizeof(struct ropipe));
 	if (new == NULL)
 		abort();
 
 	new->pipe = NULL;
 	pipe_new(&(new->pipe), name);
-
-	// Create the pipe
-	int rc = mkfifo(new->pipe->name, 0600);
-	if (rc == -1){
-		perror("ERROR");
-		exit(1);
-	}
 	*ptr = new;
 }
 
@@ -252,10 +266,8 @@ void ropipe_free(struct ropipe *ptr)
 
 	pipe_free(ptr->pipe);
 
-	if (name != NULL) {
-		remove(name);
+	if (name != NULL)
 		free(name);
-	}
 
 	free(ptr);
 }

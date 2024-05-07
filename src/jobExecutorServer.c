@@ -2,6 +2,9 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/signal.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "configuration.h"
@@ -65,9 +68,11 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 	array_print_str(command);
 	array_print_str(stripped);
 
+	struct array *reply = NULL;
+
 	switch (command_recognize(command)) {
 		case cmd_empty:
-			break;
+			goto skip;
 
 		case cmd_invalid:
 			fprintf(stderr, "Invalid Command\n");
@@ -87,11 +92,11 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 			break;
 
 		case cmd_pollrunning:
-			taskboard_get_running(exd->tboard, NULL);
+			taskboard_get_running(exd->tboard, &reply);
 			break;
 
 		case cmd_pollqueued:
-			taskboard_get_waiting(exd->tboard, NULL);
+			taskboard_get_waiting(exd->tboard, &reply);
 			break;
 
 		case cmd_exit:
@@ -102,11 +107,44 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 			abort();
 	}
 
+	if (array_get(reply, 0) == NULL) {
+		array_free(reply);
+		reply = NULL;
+
+		struct llnode *ll = NULL;
+		char ack[] = "ack";
+		llnode_new(&ll, sizeof(char), NULL);
+
+		for (size_t i = 0; i < strlen(ack) + 1; i++)
+			llnode_add(&ll, &(ack[i]));
+
+		array_new(&reply, ll);
+		llnode_free(ll);
+	}
+
+	struct packets *p = NULL;
+	packets_new(&p);
+	packets_pack(p, reply);
+	packets_send(p, exd->to_cmd);
+	packets_free(p);
+	array_free(reply);
+
+skip:
 	array_free(stripped);
+}
+
+void mkfifo_werr(char *str)
+{
+	int rc = mkfifo(str, 0600);
+	if (rc == -1){
+		perror("ERROR");
+		exit(1);
+	}
 }
 
 int main()
 {
+	signal(SIGPIPE, SIG_IGN);
 	create_txt();
 
 	struct executor_data exd;
@@ -114,6 +152,8 @@ int main()
 	exd.to_cmd   = NULL;
 
 	// Initialize named pipes
+	mkfifo_werr(CMD_TO_EXEC);
+	mkfifo_werr(EXEC_TO_CMD);
 	ropipe_new(&(exd.from_cmd), CMD_TO_EXEC);
 	wopipe_new(&(exd.to_cmd), EXEC_TO_CMD);
 
@@ -140,6 +180,8 @@ int main()
 	taskboard_free(exd.tboard);
 	ropipe_free(exd.from_cmd);
 	wopipe_free(exd.to_cmd);
+	remove(CMD_TO_EXEC);
+	remove(EXEC_TO_CMD);
 	remove(TXT_NAME);
 	return 0;
 }

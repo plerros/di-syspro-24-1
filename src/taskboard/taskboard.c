@@ -1,6 +1,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "configuration.h"
 
@@ -46,7 +47,7 @@ void taskboard_free(struct taskboard *ptr)
 	 * I'm sorry, this is extremely janky.
 	 */
 
-	for (size_t i = 0; i < size; i++)
+	for (unsigned int i = 0; i < size; i++)
 		taskboard_remove_tid(ptr, i);
 
 	llnode_free(ptr->tasks);
@@ -115,6 +116,77 @@ void taskboard_remove_pid(struct taskboard *ptr, pid_t pid)
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 }
 
+static void concat(char **str1, char *str2)
+{
+	if (*str1 == NULL && str2 == NULL) {
+		return;
+	}
+
+	if (*str1 != NULL && str2 == NULL) {
+		return;
+	}
+
+	size_t len1 = 0;
+	size_t len2 = 0;
+
+	if (*str1 != NULL)
+		len1 = strlen(*str1);
+	if (str2 != NULL)
+		len2 = strlen(str2);
+/*
+	if (len1 + len2 == 0)
+		abort();
+
+	char *new = malloc(len1 + len2 + 1);
+	if (new == NULL)
+		abort();
+
+	new[0] = '\0';
+
+	if (*str1 != NULL) {
+		strcpy(new, *str1);
+		free(*str1);
+	}
+
+	if (str2 != NULL)
+		strcat(new, str2);
+
+	*str1 = new;
+*/
+
+
+	if (*str1 == NULL && str2 != NULL) {
+		char *new = malloc(len1 + len2 + 1);
+		if (new == NULL)
+			abort();
+		strcpy(new, str2);
+		*str1 = new;
+		return;
+	}
+
+	if (*str1 != NULL && str2 != NULL) {
+		char *new = malloc(len1 + len2 + 1);
+		if (new == NULL)
+			abort();
+
+		strcpy(new, *str1);
+		free(*str1);
+		strcat(new, str2);
+		*str1 = new;
+		return;
+	}
+}
+
+static void concat_task(struct task *t, char **str, size_t queuePosition)
+{
+	char jobstr[1024];
+	sprintf(jobstr, "job_%d, ", t->taskid);
+	concat(str, jobstr);
+	concat(str, array_get(t->command, 0));
+	sprintf(jobstr, ", %lu\n", queuePosition);
+	concat(str, jobstr);
+}
+
 void taskboard_get_waiting(struct taskboard *ptr, struct array **waiting)
 {
 	if (ptr == NULL)
@@ -129,15 +201,34 @@ void taskboard_get_waiting(struct taskboard *ptr, struct array **waiting)
 	size_t size = llnode_getsize(ptr->tasks);
 	struct task *tmp = NULL;
 
+	char *str = NULL;
+
+	size_t waiting_position = 0;
+
 	for (size_t i = 0; i < size; i++) {
+
 		tmp = (struct task *)llnode_get(ptr->tasks, i);
 		if (tmp == NULL)
 			continue;
 
 		if (task_iswaiting(tmp)) {
-			printf("job_%d\n", tmp->taskid);
+			concat_task(tmp, &str, waiting_position);
+			waiting_position++;
 		}
+
 	}
+
+	struct llnode *ll = NULL;
+	llnode_new(&ll, sizeof(char), NULL);
+
+	if (str != NULL) {
+		for(size_t i = 0; i < strlen(str); i++)
+			llnode_add(&ll, &(str[i]));
+		free(str);
+	}
+
+	array_new(waiting, ll);
+	llnode_free(ll);
 
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 }
@@ -155,11 +246,30 @@ void taskboard_get_running(struct taskboard *ptr, struct array **running)
 
 	size_t size = llnode_getsize(ptr->tasks);
 	struct task *tmp = NULL;
+
+	char *str = NULL;
+	size_t running_position = 0;
+
 	for (size_t i = 0; i < size; i++) {
 		tmp = (struct task *)llnode_get(ptr->tasks, i);
-		if (task_isrunning(tmp))
-			printf("job_%d\n", tmp->taskid);
+		if (task_isrunning(tmp)) {
+			concat_task(tmp, &str, running_position);
+			running_position++;
+		}
 	}
+
+	struct llnode *ll = NULL;
+	llnode_new(&ll, sizeof(char), NULL);
+
+	if (str != NULL) {
+		for(size_t i = 0; i < strlen(str); i++)
+			llnode_add(&ll, &(str[i]));
+		free(str);
+	}
+
+	array_new(running, ll);
+	llnode_free(ll);
+
 
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 }
