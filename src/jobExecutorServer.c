@@ -114,6 +114,17 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 
 		case cmd_exit:
 			exd->exit_flag = true;
+			{
+				struct llnode *ll = NULL;
+				char terminated[] = "jobExecutorServer terminated";
+				llnode_new(&ll, sizeof(char), NULL);
+
+				for (size_t i = 0; i < strlen(terminated) + 1; i++)
+					llnode_add(&ll, &(terminated[i]));
+
+				array_new(&reply, ll);
+				llnode_free(ll);
+			}
 			break;
 
 		default:

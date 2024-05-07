@@ -10,11 +10,11 @@
 struct task
 {
 	struct array *command;
-	unsigned int taskid;
+	size_t taskid;
 	pid_t pid;
 };
 
-void task_new(struct task **ptr, struct array *command, unsigned int taskid);
+void task_new(struct task **ptr, struct array *command, size_t taskid);
 void task_free(struct task *ptr);
 
 bool task_isfinished(struct task *ptr);

@@ -3,17 +3,17 @@
 
 #include "configuration.h"
 
-#include "llnode.h"
+#include "array.h"
 
 struct taskboard
 {
-	struct llnode *tasks;
+	struct array *tasks;
 };
 
 void taskboard_new(struct taskboard **ptr);
 void taskboard_free(struct taskboard *ptr);
 void taskboard_add(struct taskboard *ptr, struct array *command);
-void taskboard_remove_tid(struct taskboard *ptr, unsigned int tid);
+void taskboard_remove_tid(struct taskboard *ptr, size_t tid);
 void taskboard_remove_pid(struct taskboard *ptr, pid_t pid);
 size_t taskboard_get_waiting(struct taskboard *ptr, struct array **waiting);
 size_t taskboard_get_running(struct taskboard *ptr, struct array **running);

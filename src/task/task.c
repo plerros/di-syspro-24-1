@@ -7,7 +7,7 @@
 #include "array.h"
 #include "task.h"
 
-void task_new(struct task **ptr, struct array *command, unsigned int taskid)
+void task_new(struct task **ptr, struct array *command, size_t taskid)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
 	OPTIONAL_ASSERT(*ptr == NULL);

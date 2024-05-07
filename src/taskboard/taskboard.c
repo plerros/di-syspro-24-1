@@ -23,7 +23,6 @@ void taskboard_new(struct taskboard **ptr)
 		abort();
 
 	new->tasks = NULL;
-	llnode_new(&(new->tasks), sizeof(struct task), NULL);
 
 	*ptr = new;
 }
@@ -33,7 +32,7 @@ void taskboard_free(struct taskboard *ptr)
 	if (ptr == NULL)
 		return;
 
-	size_t size = llnode_getsize(ptr->tasks);
+	size_t size = array_get_size(ptr->tasks);
 
 	/*
 	 * Note to self:
@@ -47,10 +46,10 @@ void taskboard_free(struct taskboard *ptr)
 	 * I'm sorry, this is extremely janky.
 	 */
 
-	for (unsigned int i = 0; i < size; i++)
+	for (size_t i = 0; i < size; i++)
 		taskboard_remove_tid(ptr, i);
 
-	llnode_free(ptr->tasks);
+	array_free(ptr->tasks);
 	free(ptr);
 }
 
@@ -63,26 +62,44 @@ void taskboard_add(struct taskboard *ptr, struct array *command)
 	if (command == NULL)
 		return;
 
+	sigset_t oldmask;
+	block_sigchild(&oldmask);
+
 	struct task *tmp = NULL;
-	task_new(&tmp, command, (unsigned int)llnode_getsize(ptr->tasks));
-	llnode_add(&(ptr->tasks), tmp);
+	task_new(&tmp, command, array_get_size(ptr->tasks));
+
+	struct llnode *ll = NULL;
+	llnode_new(&ll, sizeof(struct task), NULL);
+
+	size_t size = array_get_size(ptr->tasks);
+	for (size_t i = 0; i < size; i++)
+		llnode_add(&ll, array_get(ptr->tasks, i));
+
+	llnode_add(&ll, tmp);
+
+	array_free(ptr->tasks);
+	ptr->tasks = NULL;
+	array_new(&(ptr->tasks), ll);
+	llnode_free(ll);
 
 	tmp->command = NULL; // It's janky, I'm sorry
 	task_free(tmp);
+
+	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 }
 
-void taskboard_remove_tid(struct taskboard *ptr, unsigned int tid)
+void taskboard_remove_tid(struct taskboard *ptr, size_t tid)
 {
 	if (ptr == NULL)
 		return;
 
-	if (tid >= llnode_getsize(ptr->tasks))
+	if (tid >= array_get_size(ptr->tasks))
 		return;
 
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
 
-	struct task *tmp = (struct task *)llnode_get(ptr->tasks, tid);
+	struct task *tmp = (struct task *)array_get(ptr->tasks, tid);
 	if (tmp == NULL)
 		abort();
 
@@ -102,10 +119,10 @@ void taskboard_remove_pid(struct taskboard *ptr, pid_t pid)
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
 
-	size_t size = llnode_getsize(ptr->tasks);
+	size_t size = array_get_size(ptr->tasks);
 	struct task *tmp = NULL;
 	for (size_t i = 0; i < size; i++) {
-		tmp = (struct task *)llnode_get(ptr->tasks, i);
+		tmp = (struct task *)array_get(ptr->tasks, i);
 		if (tmp->pid != pid)
 			tmp = NULL;
 		else
@@ -159,7 +176,7 @@ static void concat(char **str1, char *str2)
 static void concat_task(struct task *t, char **str, size_t queuePosition)
 {
 	char jobstr[1024];
-	sprintf(jobstr, "job_%d, ", t->taskid);
+	sprintf(jobstr, "job_%lu, ", t->taskid);
 	concat(str, jobstr);
 	concat(str, array_get(t->command, 0));
 	sprintf(jobstr, ", %lu\n", queuePosition);
@@ -177,7 +194,7 @@ size_t taskboard_get_waiting(struct taskboard *ptr, struct array **waiting)
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
 
-	size_t size = llnode_getsize(ptr->tasks);
+	size_t size = array_get_size(ptr->tasks);
 	struct task *tmp = NULL;
 
 	char *str = NULL;
@@ -186,7 +203,7 @@ size_t taskboard_get_waiting(struct taskboard *ptr, struct array **waiting)
 
 	for (size_t i = 0; i < size; i++) {
 
-		tmp = (struct task *)llnode_get(ptr->tasks, i);
+		tmp = (struct task *)array_get(ptr->tasks, i);
 		if (tmp == NULL)
 			continue;
 
@@ -226,14 +243,14 @@ size_t taskboard_get_running(struct taskboard *ptr, struct array **running)
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
 
-	size_t size = llnode_getsize(ptr->tasks);
+	size_t size = array_get_size(ptr->tasks);
 	struct task *tmp = NULL;
 
 	char *str = NULL;
 	size_t running_position = 0;
 
 	for (size_t i = 0; i < size; i++) {
-		tmp = (struct task *)llnode_get(ptr->tasks, i);
+		tmp = (struct task *)array_get(ptr->tasks, i);
 		if (task_isrunning(tmp)) {
 			concat_task(tmp, &str, running_position);
 			running_position++;
@@ -273,11 +290,11 @@ void taskboard_run_next(struct taskboard *ptr)
 	block_sigchild(&oldmask);
 
 
-	size_t size = llnode_getsize(ptr->tasks);
+	size_t size = array_get_size(ptr->tasks);
 	struct task *tmp = NULL;
 
 	for (size_t i = 0; i < size; i++) {
-		tmp = (struct task *)llnode_get(ptr->tasks, i);
+		tmp = (struct task *)array_get(ptr->tasks, i);
 		if (!task_iswaiting(tmp))
 			continue;
 	}
