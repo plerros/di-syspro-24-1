@@ -133,27 +133,6 @@ static void concat(char **str1, char *str2)
 		len1 = strlen(*str1);
 	if (str2 != NULL)
 		len2 = strlen(str2);
-/*
-	if (len1 + len2 == 0)
-		abort();
-
-	char *new = malloc(len1 + len2 + 1);
-	if (new == NULL)
-		abort();
-
-	new[0] = '\0';
-
-	if (*str1 != NULL) {
-		strcpy(new, *str1);
-		free(*str1);
-	}
-
-	if (str2 != NULL)
-		strcat(new, str2);
-
-	*str1 = new;
-*/
-
 
 	if (*str1 == NULL && str2 != NULL) {
 		char *new = malloc(len1 + len2 + 1);
