@@ -117,7 +117,8 @@ int main(int argc, char *argv[])
 	} while (array_get(reply, 0) == NULL && retry < 10000);
 
 	char *str = (char *) array_get(reply, 0);
-	if (str != NULL)
+	char str2[] = "ack";
+	if (str != NULL && !(strcmp(str, str2) == 0))
 		printf("%s\n", str);
 
 	array_free(reply);
