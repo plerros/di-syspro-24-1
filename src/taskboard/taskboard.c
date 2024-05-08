@@ -48,7 +48,7 @@ void taskboard_free(struct taskboard *ptr)
 	 */
 
 	for (size_t i = 0; i < size; i++)
-		taskboard_remove_tid(ptr, i);
+		taskboard_remove_tid(ptr, i, NULL);
 
 	array_free(ptr->tasks);
 	free(ptr);
@@ -89,7 +89,7 @@ void taskboard_add(struct taskboard *ptr, struct array *command)
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 }
 
-void taskboard_remove_tid(struct taskboard *ptr, size_t tid)
+void taskboard_remove_tid(struct taskboard *ptr, size_t tid, struct array **reply)
 {
 	if (ptr == NULL)
 		return;
@@ -103,6 +103,25 @@ void taskboard_remove_tid(struct taskboard *ptr, size_t tid)
 	struct task *tmp = (struct task *)array_get(ptr->tasks, tid);
 	if (tmp == NULL)
 		abort();
+
+	// Form reply	
+	char str[100];
+	if (task_iswaiting(tmp))
+		sprintf(str, "job_%lu removed", tmp->taskid);
+
+	if (task_isrunning(tmp))
+		sprintf(str, "job_%lu terminated", tmp->taskid);
+
+	struct llnode *ll = NULL;
+	llnode_new(&ll, sizeof(char), NULL);
+
+	for (size_t i = 0; i < strlen(str) + 1; i++)
+		llnode_add(&ll, &(str[i]));
+
+	if (reply != NULL)
+		array_new(reply, ll);
+
+	llnode_free(ll);
 
 	task_end(tmp);
 

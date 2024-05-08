@@ -78,8 +78,10 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 	struct array *stripped = NULL;
 	command_strip(command, &stripped);
 
+#ifdef DEBUG
 	array_print_str(command);
 	array_print_str(stripped);
+#endif
 
 	struct array *reply = NULL;
 
@@ -101,7 +103,7 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 			break;
 
 		case cmd_stop:
-			taskboard_remove_tid(exd->tboard, array_to_u(stripped));
+			taskboard_remove_tid(exd->tboard, array_to_u(stripped), &reply);
 			break;
 
 		case cmd_pollrunning:
