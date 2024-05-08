@@ -54,7 +54,7 @@ void taskboard_free(struct taskboard *ptr)
 	free(ptr);
 }
 
-void taskboard_add(struct taskboard *ptr, struct array *command)
+void taskboard_push(struct taskboard *ptr, struct array *command)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
 	if (ptr == NULL)
@@ -298,7 +298,7 @@ size_t taskboard_get_running(struct taskboard *ptr, struct array **running)
 	return running_position;
 }
 
-void taskboard_run_next(struct taskboard *ptr)
+void taskboard_pop_to_run(struct taskboard *ptr)
 {
 	if (ptr == NULL)
 		return;

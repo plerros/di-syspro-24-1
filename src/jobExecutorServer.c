@@ -94,7 +94,7 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 			break;
 
 		case cmd_issueJob:
-			taskboard_add(exd->tboard, stripped);
+			taskboard_push(exd->tboard, stripped);
 			break;
 
 		case cmd_setConcurrency:
@@ -173,7 +173,7 @@ void assign_work(struct executor_data *exd)
 	block_sigchild(&oldmask);
 
 	if (taskboard_get_running(exd->tboard, NULL) < exd->concurrency)
-		taskboard_run_next(exd->tboard);
+		taskboard_pop_to_run(exd->tboard);
 
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 }
