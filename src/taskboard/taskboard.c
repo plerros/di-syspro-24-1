@@ -1,3 +1,4 @@
+#include <linux/limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -309,6 +310,20 @@ void taskboard_run_next(struct taskboard *ptr)
 		if (pid == 0) {
 			fclose(stdout);
 			fclose(stderr);
+
+			// Add current working directory to path
+			char *path = getenv("PATH");
+			char cwd[PATH_MAX];
+			getcwd(cwd, sizeof(cwd));
+			char separator[] = ":";
+
+			char *newpath = malloc(strlen(path) + strlen(separator) + strlen(cwd) + 1);
+
+			strcpy(newpath, path);
+			strcat(newpath, separator);
+			strcat(newpath, cwd);
+
+			setenv("PATH", newpath, 1);
 			rc = execlp("sh", "sh", "-c", (char *)array_get(tmp->command, 0), NULL);
 		}
 		else {
