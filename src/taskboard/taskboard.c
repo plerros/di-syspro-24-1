@@ -296,8 +296,8 @@ void taskboard_run_next(struct taskboard *ptr)
 
 	for (size_t i = 0; i < size; i++) {
 		tmp = (struct task *)array_get(ptr->tasks, i);
-		if (!task_iswaiting(tmp))
-			continue;
+		if (task_iswaiting(tmp))
+			break;
 	}
 
 
