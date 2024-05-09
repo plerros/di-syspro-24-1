@@ -3,11 +3,13 @@
 
 #include "configuration.h"
 
+#include "llnode.h"
 #include "array.h"
 
 struct taskboard
 {
 	struct array *tasks;
+	struct llnode *addlater;
 };
 
 void taskboard_new(struct taskboard **ptr);

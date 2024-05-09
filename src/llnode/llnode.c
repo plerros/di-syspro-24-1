@@ -91,3 +91,16 @@ void *llnode_get(struct llnode *ptr, size_t index)
 		return NULL;
 	return (llnode_get(ptr->next, index - ptr->logical_size));
 }
+
+void llnode_link(struct llnode **ptr, struct llnode **next)
+{
+	if (ptr == NULL)
+		*ptr = *next;
+
+	struct llnode *curr = *ptr;
+	while (curr->next != NULL)
+		curr = curr->next;
+
+	curr->next = *next;
+	*next = NULL;
+}

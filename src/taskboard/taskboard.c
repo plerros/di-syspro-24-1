@@ -24,6 +24,7 @@ void taskboard_new(struct taskboard **ptr)
 		abort();
 
 	new->tasks = NULL;
+	new->addlater = NULL;
 
 	*ptr = new;
 }
@@ -32,6 +33,8 @@ void taskboard_free(struct taskboard *ptr)
 {
 	if (ptr == NULL)
 		return;
+
+	llnode_free(ptr->addlater);
 
 	size_t size = array_get_size(ptr->tasks);
 
@@ -66,9 +69,26 @@ void taskboard_push(struct taskboard *ptr, struct array *command)
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
 
-	struct task *tmp = NULL;
-	task_new(&tmp, command, array_get_size(ptr->tasks));
+	if (ptr->addlater == NULL)
+		llnode_new(&(ptr->addlater), sizeof(struct task), NULL);
 
+	size_t position = array_get_size(ptr->tasks) + llnode_getsize(ptr->addlater);
+
+	struct task *tmp = NULL;
+	task_new(&tmp, command, position);
+	llnode_add(&(ptr->addlater), tmp);
+	tmp->command = NULL; // It's janky, I'm sorry
+	task_free(tmp);
+
+	sigprocmask(SIG_SETMASK, &oldmask, NULL);
+}
+
+void taskboard_addnow(struct taskboard *ptr)
+{
+	if (ptr->addlater == NULL)
+		return;
+
+	// Copy array data to an llnode
 	struct llnode *ll = NULL;
 	llnode_new(&ll, sizeof(struct task), NULL);
 
@@ -76,18 +96,16 @@ void taskboard_push(struct taskboard *ptr, struct array *command)
 	for (size_t i = 0; i < size; i++)
 		llnode_add(&ll, array_get(ptr->tasks, i));
 
-	llnode_add(&ll, tmp);
+	// Merge the two llnodes
+	llnode_link(&(ptr->addlater), &ll);
 
 	array_free(ptr->tasks);
 	ptr->tasks = NULL;
-	array_new(&(ptr->tasks), ll);
-	llnode_free(ll);
-
-	tmp->command = NULL; // It's janky, I'm sorry
-	task_free(tmp);
-
-	sigprocmask(SIG_SETMASK, &oldmask, NULL);
+	array_new(&(ptr->tasks), ptr->addlater);
+	llnode_free(ptr->addlater);
+	ptr->addlater = NULL;
 }
+
 
 void taskboard_remove_tid(struct taskboard *ptr, size_t tid, struct array **reply)
 {
@@ -99,6 +117,8 @@ void taskboard_remove_tid(struct taskboard *ptr, size_t tid, struct array **repl
 
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
+
+	taskboard_addnow(ptr);
 
 	struct task *tmp = (struct task *)array_get(ptr->tasks, tid);
 	if (tmp == NULL)
@@ -133,11 +153,13 @@ void taskboard_remove_pid(struct taskboard *ptr, pid_t pid)
 	if (ptr == NULL)
 		return;
 
-	if (ptr->tasks == NULL)
+	if (ptr->tasks == NULL && ptr->addlater == NULL)
 		return;
 
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
+
+	taskboard_addnow(ptr);
 
 	size_t size = array_get_size(ptr->tasks);
 	struct task *tmp = NULL;
@@ -208,11 +230,13 @@ size_t taskboard_get_waiting(struct taskboard *ptr, struct array **waiting)
 	if (ptr == NULL)
 		return 0;
 
-	if (ptr->tasks == NULL)
+	if (ptr->tasks == NULL && ptr->addlater == NULL)
 		return 0;
 
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
+
+	taskboard_addnow(ptr);
 
 	size_t size = array_get_size(ptr->tasks);
 	struct task *tmp = NULL;
@@ -257,11 +281,13 @@ size_t taskboard_get_running(struct taskboard *ptr, struct array **running)
 	if (ptr == NULL)
 		return 0;
 
-	if (ptr->tasks == NULL)
+	if (ptr->tasks == NULL && ptr->addlater == NULL)
 		return 0;
 
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
+
+	taskboard_addnow(ptr);
 
 	size_t size = array_get_size(ptr->tasks);
 	struct task *tmp = NULL;
@@ -303,12 +329,14 @@ void taskboard_pop_to_run(struct taskboard *ptr)
 	if (ptr == NULL)
 		return;
 
-	if (ptr->tasks == NULL)
+	if (ptr->tasks == NULL && ptr->addlater == NULL)
 		return;
 
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
 
+
+	taskboard_addnow(ptr);
 
 	size_t size = array_get_size(ptr->tasks);
 	struct task *tmp = NULL;
