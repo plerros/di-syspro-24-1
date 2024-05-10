@@ -12,6 +12,7 @@
 #include "configuration.h"
 
 #include "helper.h"
+#include "queue.h"
 #include "llnode.h"
 #include "array.h"
 #include "fifopipe.h"
@@ -33,6 +34,8 @@ struct executor_data
 	struct wopipe *to_cmd;
 	bool exit_flag;
 	struct taskboard *tboard;
+	struct queue *waiting;
+	struct queue *running;
 	unsigned int concurrency;
 };
 
@@ -60,13 +63,14 @@ void update_concurrency(unsigned int *concurrency, struct array *stripped)
 	*concurrency = (unsigned int)tmp;
 }
 
-struct taskboard *global_tboard = NULL;
+struct executor_data *global_data = NULL;
 
 void sigchld_handler(__attribute__((unused))int sig)
 {
 	pid_t pid;
 	while((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
-		taskboard_remove_pid(global_tboard, pid);
+		size_t task_id =  queue_find_pop(&(global_data->running), pid);
+		taskboard_remove_tid(global_data->tboard, task_id, NULL);
 	}
 }
 
@@ -93,9 +97,11 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 			fprintf(stderr, "Invalid Command\n");
 			break;
 
-		case cmd_issueJob:
-			taskboard_push(exd->tboard, stripped);
+		case cmd_issueJob: {
+			size_t task_id = taskboard_add(exd->tboard, stripped);
+			queue_push(&(exd->waiting), task_id, -1);
 			break;
+		}
 
 		case cmd_setConcurrency:
 			update_concurrency(&(exd->concurrency), stripped);
@@ -114,20 +120,19 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 			taskboard_get_waiting(exd->tboard, &reply);
 			break;
 
-		case cmd_exit:
+		case cmd_exit: {
 			exd->exit_flag = true;
-			{
-				struct llnode *ll = NULL;
-				char terminated[] = "jobExecutorServer terminated";
-				llnode_new(&ll, sizeof(char), NULL);
+			struct llnode *ll = NULL;
+			char terminated[] = "jobExecutorServer terminated";
+			llnode_new(&ll, sizeof(char), NULL);
 
-				for (size_t i = 0; i < strlen(terminated) + 1; i++)
-					llnode_add(&ll, &(terminated[i]));
+			for (size_t i = 0; i < strlen(terminated) + 1; i++)
+				llnode_add(&ll, &(terminated[i]));
 
-				array_new(&reply, ll);
-				llnode_free(ll);
-			}
+			array_new(&reply, ll);
+			llnode_free(ll);
 			break;
+		}
 
 		default:
 			abort();
@@ -172,8 +177,12 @@ void assign_work(struct executor_data *exd)
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
 
-	if (taskboard_get_running(exd->tboard, NULL) < exd->concurrency)
-		taskboard_pop_to_run(exd->tboard);
+	if (taskboard_get_running(exd->tboard, NULL) < exd->concurrency) {
+		size_t task_id = queue_pop(&(exd->waiting));
+		pid_t pid = taskboard_run(exd->tboard);
+		if (task_id != 0)
+			queue_push(&(exd->running), task_id, pid);
+	}
 
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 }
@@ -193,6 +202,7 @@ int main()
 	create_txt();
 
 	struct executor_data exd;
+	global_data = &exd;
 	exd.from_cmd = NULL;
 	exd.to_cmd   = NULL;
 
@@ -204,8 +214,9 @@ int main()
 
 	exd.tboard = NULL;
 	taskboard_new(&(exd.tboard));
-	global_tboard = exd.tboard;
 
+	exd.waiting = NULL;
+	exd.running = NULL;
 	exd.concurrency = 1;
 
 	exd.exit_flag = false;
@@ -225,7 +236,13 @@ int main()
 		array_free(command);
 	}
 
-	global_tboard = NULL;
+	global_data = NULL;
+
+	while (exd.waiting != NULL)
+		queue_pop(&(exd.waiting));
+	while (exd.running != NULL)
+		queue_pop(&(exd.running));
+
 	taskboard_free(exd.tboard);
 	ropipe_free(exd.from_cmd);
 	wopipe_free(exd.to_cmd);

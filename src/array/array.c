@@ -95,7 +95,6 @@ void array_print_str(struct array *arr)
 
 void array_copy(struct array *src, struct array **dst)
 {
-	OPTIONAL_ASSERT(src != NULL);
 	OPTIONAL_ASSERT(dst != NULL);
 	OPTIONAL_ASSERT(*dst == NULL);
 
@@ -107,13 +106,8 @@ void array_copy(struct array *src, struct array **dst)
 		abort();
 
 	new->data = NULL;
-	new->element_size = 0;
-	new->size = 0;
-
-	if (src != NULL) {
-		new->element_size = src->element_size;
-		new->size = src->size;
-	}
+	new->element_size = array_get_elementsize(src);
+	new->size = array_get_size(src);
 
 	void *arr = malloc(new->element_size * new->size);
 	if (arr == NULL && new->element_size * new->size > 0)

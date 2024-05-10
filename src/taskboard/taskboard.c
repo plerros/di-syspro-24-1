@@ -10,6 +10,8 @@
 #include "task.h"
 #include "taskboard.h"
 
+void taskboard_addnow(struct taskboard *ptr);
+
 void taskboard_new(struct taskboard **ptr)
 {
 
@@ -26,6 +28,20 @@ void taskboard_new(struct taskboard **ptr)
 	new->tasks = NULL;
 	new->addlater = NULL;
 
+	// Dummy job to take up the job_id 0
+	llnode_new(&(new->addlater), sizeof(struct task), NULL);
+	struct task *dummy_job_0 = NULL;
+
+	task_new(&dummy_job_0, NULL, 0);
+
+	if (!task_isfinished(dummy_job_0))
+		abort();
+
+	llnode_add(&(new->addlater), dummy_job_0);
+
+	dummy_job_0->command = NULL;
+	task_free(dummy_job_0);
+
 	*ptr = new;
 }
 
@@ -33,8 +49,6 @@ void taskboard_free(struct taskboard *ptr)
 {
 	if (ptr == NULL)
 		return;
-
-	llnode_free(ptr->addlater);
 
 	size_t size = array_get_size(ptr->tasks);
 
@@ -54,17 +68,27 @@ void taskboard_free(struct taskboard *ptr)
 		taskboard_remove_tid(ptr, i, NULL);
 
 	array_free(ptr->tasks);
+	ptr->tasks = NULL;
+
+	taskboard_addnow(ptr);
+
+	size = array_get_size(ptr->tasks);
+	for (size_t i = 0; i < size; i++)
+		taskboard_remove_tid(ptr, i, NULL);
+
+	array_free(ptr->tasks);
+
 	free(ptr);
 }
 
-void taskboard_push(struct taskboard *ptr, struct array *command)
+size_t taskboard_add(struct taskboard *ptr, struct array *command)
 {
 	OPTIONAL_ASSERT(ptr != NULL);
 	if (ptr == NULL)
-		return;
+		return 0;
 
 	if (command == NULL)
-		return;
+		return 0;
 
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
@@ -81,6 +105,7 @@ void taskboard_push(struct taskboard *ptr, struct array *command)
 	task_free(tmp);
 
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
+	return position;
 }
 
 void taskboard_addnow(struct taskboard *ptr)
@@ -106,7 +131,6 @@ void taskboard_addnow(struct taskboard *ptr)
 	ptr->addlater = NULL;
 }
 
-
 void taskboard_remove_tid(struct taskboard *ptr, size_t tid, struct array **reply)
 {
 	if (ptr == NULL)
@@ -126,6 +150,8 @@ void taskboard_remove_tid(struct taskboard *ptr, size_t tid, struct array **repl
 
 	// Form reply	
 	char str[100];
+	str[0] = '\0';
+
 	if (task_iswaiting(tmp))
 		sprintf(str, "job_%lu removed", tmp->taskid);
 
@@ -324,13 +350,13 @@ size_t taskboard_get_running(struct taskboard *ptr, struct array **running)
 	return running_position;
 }
 
-void taskboard_pop_to_run(struct taskboard *ptr)
+pid_t taskboard_run(struct taskboard *ptr)
 {
 	if (ptr == NULL)
-		return;
+		return -1;
 
 	if (ptr->tasks == NULL && ptr->addlater == NULL)
-		return;
+		return -1;
 
 	sigset_t oldmask;
 	block_sigchild(&oldmask);
@@ -347,6 +373,7 @@ void taskboard_pop_to_run(struct taskboard *ptr)
 			break;
 	}
 
+	pid_t ret = -1;
 
 	if (task_iswaiting(tmp)) {
 		pid_t pid = fork();
@@ -375,6 +402,7 @@ void taskboard_pop_to_run(struct taskboard *ptr)
 		}
 		else {
 			tmp->pid = pid;
+			ret = pid;
 		}
 
 		if (rc == -1) {
@@ -385,4 +413,5 @@ void taskboard_pop_to_run(struct taskboard *ptr)
 	}
 
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
+	return ret;
 }
