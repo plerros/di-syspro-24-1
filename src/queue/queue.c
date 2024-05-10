@@ -35,6 +35,20 @@ static void sprev(struct queue *ptr, struct queue *prev)
 	ptr->prev = prev;
 }
 
+static size_t queue_gettaskid(struct queue *ptr)
+{
+	if (ptr == NULL)
+		return 0;
+	return ptr->task_id;
+}
+
+static pid_t queue_getpid(struct queue *ptr)
+{
+	if (ptr == NULL)
+		return -1;
+	return ptr->pid;
+}
+
 void queue_push(struct queue **ptr, size_t task_id, pid_t pid)
 {
 	if (ptr == NULL)
@@ -52,7 +66,7 @@ void queue_push(struct queue **ptr, size_t task_id, pid_t pid)
 
 	if (*ptr != NULL) {
 		snext(new, *ptr);
-		sprev(new, (*ptr)->prev);
+		sprev(new, gprev(*ptr));
 
 		snext(gprev(new), new);
 		sprev(gnext(new), new);
@@ -74,7 +88,7 @@ size_t queue_pop(struct queue **ptr)
 
 	*ptr = gnext(rm);
 
-	if (gnext(rm) == gprev(rm))
+	if (gnext(rm) == rm && gprev(rm) == rm)
 		*ptr = NULL;
 
 	size_t ret = 0;
@@ -85,8 +99,7 @@ size_t queue_pop(struct queue **ptr)
 	return ret;
 }
 
-
-size_t queue_find_pop(struct queue **ptr, pid_t pid)
+size_t queue_find_pop(struct queue **ptr, size_t task_id, pid_t pid)
 {
 	if (ptr == NULL)
 		return 0;
@@ -94,10 +107,15 @@ size_t queue_find_pop(struct queue **ptr, pid_t pid)
 	struct queue *tmp = *ptr;
 	bool update_ptr = false;
 
-	if (pid == -1)
+	if (task_id == 0 && pid == -1)
 		goto out;
 
-	while (tmp->pid != pid) {
+	while (1) {
+		if (task_id != 0 && queue_gettaskid(tmp) == task_id)
+			break;
+		if (pid != -1 && queue_getpid(tmp) == pid)
+			break;
+
 		tmp = gnext(tmp);
 		if (tmp == *ptr) // not found
 			return 0;

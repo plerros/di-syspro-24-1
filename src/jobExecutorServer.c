@@ -69,8 +69,9 @@ void sigchld_handler(__attribute__((unused))int sig)
 {
 	pid_t pid;
 	while((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
-		size_t task_id =  queue_find_pop(&(global_data->running), pid);
-		taskboard_remove_tid(global_data->tboard, task_id, NULL);
+		size_t task_id =  queue_find_pop(&(global_data->running), 0, pid);
+		if (task_id != 0)
+			taskboard_remove_tid(global_data->tboard, task_id, NULL);
 	}
 }
 
@@ -108,9 +109,13 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 			printf("New concurrency: %u\n", exd->concurrency);
 			break;
 
-		case cmd_stop:
-			taskboard_remove_tid(exd->tboard, array_to_u(stripped), &reply);
+		case cmd_stop: {
+			size_t task_id = array_to_u(stripped);
+			queue_find_pop(&(exd->waiting), task_id, -1);
+			queue_find_pop(&(exd->running), task_id, -1);
+			taskboard_remove_tid(exd->tboard, task_id, &reply);
 			break;
+		}
 
 		case cmd_pollrunning:
 			taskboard_get_running(exd->tboard, &reply);
