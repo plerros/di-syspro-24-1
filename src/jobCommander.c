@@ -55,14 +55,47 @@ int main(int argc, char *argv[])
 
 	wait_for_txt(10);
 
+	// Initialize handshake pipe
+	struct wopipe *handshake = NULL;
+	wopipe_new(&handshake, HANDSHAKE);
+
+	// Handshake
+	pid_t pid = getpid();
+	char myname[100];
+	char toexec_name[100];
+	char fromexec_name[100];
+	sprintf(myname, "%d", pid);
+	sprintf(toexec_name, "pipes/%d.toexec", pid);
+	sprintf(fromexec_name, "pipes/%d.tocmd", pid);
+
+
+	struct llnode *ll = NULL;
+	llnode_new(&ll, sizeof(char), NULL);
+	for (size_t i = 0; i < strlen(myname) + 1; i++)
+		llnode_add(&ll, &(myname[i]));
+
+	struct array *arr = NULL;
+	array_new(&arr, ll);
+	llnode_free(ll);
+
+	struct packets *p = NULL;
+	packets_new(&p);
+	packets_pack(p, arr);
+	array_free(arr);
+	packets_send(p, handshake);
+	packets_free(p);
+
+
+	while (access(toexec_name, F_OK) != 0);
+
 	// Initialize pipes
 	struct wopipe *to_exec = NULL;
-	wopipe_new(&to_exec, CMD_TO_EXEC);
+	wopipe_new(&to_exec, toexec_name);
 	struct ropipe *from_exec = NULL;
-	ropipe_new(&from_exec, EXEC_TO_CMD);
+	ropipe_new(&from_exec, fromexec_name);
 
 	// Parse args
-	struct llnode *ll = NULL;
+	ll = NULL;
 	llnode_new(&ll, sizeof(char), NULL);
 
 	for (int i = 1; i < argc; i++) {
@@ -81,14 +114,14 @@ int main(int argc, char *argv[])
 		llnode_add(&ll, &tmp);
 	}
 
-	struct array *arr = NULL;
+	arr = NULL;
 	array_new(&arr, ll);
 	llnode_free(ll);
 
 	if (command_recognize(arr) == cmd_invalid)
 		fprintf(stderr, "Invalid Command\n");
 
-	struct packets *p = NULL;
+	p = NULL;
 	packets_new(&p);
 	packets_pack(p, arr);
 
@@ -125,5 +158,8 @@ int main(int argc, char *argv[])
 
 	wopipe_free(to_exec);
 	ropipe_free(from_exec);
+	wopipe_free(handshake);
+	remove(toexec_name);
+	remove(fromexec_name);
 	return 0;
 }

@@ -53,8 +53,8 @@ $(BUILD_DIR)/%.c.o: %.c Makefile ./src/configuration.h ./src/configuration_adv.h
 	$(CC) $(CPPFLAGS) $(WARNINGS) $(DEBUG) $(OPTIMIZE) -c $< -o $@
 
 cleantmp:
-	rm -f cmd_to_exec
-	rm -f exec_to_cmd
+	rm -f handshake
+	rm -f pipes/*
 	rm -f jobExecutorServer.txt
 	rm -f vgcore*
 

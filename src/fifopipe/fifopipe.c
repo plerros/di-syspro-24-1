@@ -173,7 +173,7 @@ static void pipe_read(struct fifopipe *ptr, struct array **dst, size_t msg_size,
 	OPTIONAL_ASSERT(dst != NULL);
 	OPTIONAL_ASSERT(*dst == NULL);
 
-	pipe_open(ptr, O_RDONLY | O_NONBLOCK);
+	pipe_open(ptr, O_RDONLY);
 
 	int fd = -1;
 	if (ptr != NULL)

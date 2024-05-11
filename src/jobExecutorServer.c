@@ -30,6 +30,7 @@ void create_txt()
 
 struct executor_data
 {
+	struct ropipe *handshake;
 	struct ropipe *from_cmd;
 	struct wopipe *to_cmd;
 	bool exit_flag;
@@ -208,14 +209,11 @@ int main()
 
 	struct executor_data exd;
 	global_data = &exd;
-	exd.from_cmd = NULL;
-	exd.to_cmd   = NULL;
+	exd.handshake = NULL;
 
 	// Initialize named pipes
-	mkfifo_werr(CMD_TO_EXEC);
-	mkfifo_werr(EXEC_TO_CMD);
-	ropipe_new(&(exd.from_cmd), CMD_TO_EXEC);
-	wopipe_new(&(exd.to_cmd), EXEC_TO_CMD);
+	mkfifo_werr(HANDSHAKE);
+	ropipe_new(&(exd.handshake), HANDSHAKE);
 
 	exd.tboard = NULL;
 	taskboard_new(&(exd.tboard));
@@ -228,6 +226,39 @@ int main()
 	while (!exd.exit_flag) {
 		struct packets *p = NULL;
 		packets_new(&p);
+		packets_receive(p, exd.handshake);
+
+		struct array *arr = NULL;
+		packets_unpack(p, &arr);
+		packets_free(p);
+
+		if (array_get_size(arr) == 0) {
+			array_free(arr);
+			continue;
+		}
+
+		char pid[100];
+		char tocmd_name[200];
+		char fromcmd_name[200];
+
+		for (size_t i = 0; i < array_get_size(arr); i++)
+			pid[i] = *((char *)array_get(arr, i));
+
+		array_free(arr);
+
+		sprintf(tocmd_name, "pipes/%s.tocmd", pid);
+		sprintf(fromcmd_name, "pipes/%s.toexec", pid);
+
+		mkfifo_werr(fromcmd_name);
+		mkfifo_werr(tocmd_name);
+
+		exd.from_cmd = NULL;
+		exd.to_cmd   = NULL;
+		ropipe_new(&(exd.from_cmd), fromcmd_name);
+		wopipe_new(&(exd.to_cmd), tocmd_name);
+
+		p = NULL;
+		packets_new(&p);
 		packets_receive(p, exd.from_cmd);
 
 		struct array *command = NULL;
@@ -239,6 +270,9 @@ int main()
 		assign_work(&exd);
 
 		array_free(command);
+
+		ropipe_free(exd.from_cmd);
+		wopipe_free(exd.to_cmd);
 	}
 
 	global_data = NULL;
@@ -249,10 +283,8 @@ int main()
 		queue_pop(&(exd.running));
 
 	taskboard_free(exd.tboard);
-	ropipe_free(exd.from_cmd);
-	wopipe_free(exd.to_cmd);
-	remove(CMD_TO_EXEC);
-	remove(EXEC_TO_CMD);
+	ropipe_free(exd.handshake);
+	remove(HANDSHAKE);
 	remove(TXT_NAME);
 	return 0;
 }
