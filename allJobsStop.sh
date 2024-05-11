@@ -4,7 +4,8 @@
 #./jobCommander setConcurrency 0
 
 # Remove queued
-./jobCommander poll queued > queued.tmp
+rm -f queued.tmp
+./jobCommander poll queued 1> queued.tmp
 queued=$(awk -F "\"*,\"*" '{print $1}' queued.tmp)
 
 for job in $queued; do
@@ -14,7 +15,8 @@ done
 rm queued.tmp
 
 # Remove running
-./jobCommander poll running > running.tmp
+rm -f running.tmp
+./jobCommander poll running 1> running.tmp
 running=$(awk -F "\"*,\"*" '{print $1}' running.tmp)
 
 for job in $running; do
