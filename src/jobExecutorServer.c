@@ -112,8 +112,10 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 
 		case cmd_stop: {
 			size_t task_id = array_to_u(stripped);
+#if (QUEUE_NO_CLEAR == true)
 			queue_find_pop(&(exd->waiting), task_id, -1);
 			queue_find_pop(&(exd->running), task_id, -1);
+#endif
 			taskboard_remove_tid(exd->tboard, task_id, &reply);
 			break;
 		}

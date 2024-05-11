@@ -13,4 +13,9 @@
 
 #define SAFETY_CHECKS true
 
+#define QUEUE_NO_CLEAR false
+/*
+ * Stray away from the requested implementation for more speed!
+ */
+
 #endif /*SYSPROG24_1_CONFIGURATION_H*/
