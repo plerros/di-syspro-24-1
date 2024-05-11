@@ -1,15 +1,24 @@
 #! /bin/bash
 
-i=1
+# Freeze new job assignment
+#./jobCommander setConcurrency 0
 
-while [[ $(./jobCommander poll queued) != "" ]]; do
-	./jobCommander stop job_$i
-	i=$(( i + 1 ))
+# Remove queued
+./jobCommander poll queued > queued.tmp
+queued=$(awk -F "\"*,\"*" '{print $1}' queued.tmp)
+
+for job in $queued; do
+	./jobCommander stop $job
 done
 
-i=1
+rm queued.tmp
 
-while [[ $(./jobCommander poll running) != "" ]]; do
-	./jobCommander stop job_$i
-	i=$(( i + 1 ))
+# Remove running
+./jobCommander poll running > running.tmp
+running=$(awk -F "\"*,\"*" '{print $1}' running.tmp)
+
+for job in $running; do
+	./jobCommander stop $job
 done
+
+rm running.tmp
