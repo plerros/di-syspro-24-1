@@ -32,6 +32,7 @@ static void pipe_new(struct fifopipe **ptr, const char *name)
 		abort();
 
 	// Copy pipe name
+	new->name = NULL;
 	if (name == NULL)
 		goto skip_name;
 
@@ -76,6 +77,10 @@ static void pipe_open(struct fifopipe *ptr, int flags)
 		return;
 	if (ptr->name == NULL)
 		return;
+	if (strlen(ptr->name) == 0) {
+		abort();
+		return;
+	}
 
 	if (ptr->fd == -1)
 		ptr->fd = open(ptr->name, flags);
@@ -133,6 +138,9 @@ static void pipe_write(struct fifopipe *ptr, struct array *src)
 
 ssize_t read_werr(int fd, void *buf, size_t count)
 {
+	if (fd == -1)
+		return 0;
+
 	ssize_t rc = read(fd, buf, count);
 	if (rc != -1)
 		return rc;
@@ -173,7 +181,13 @@ static void pipe_read(struct fifopipe *ptr, struct array **dst, size_t msg_size,
 	OPTIONAL_ASSERT(dst != NULL);
 	OPTIONAL_ASSERT(*dst == NULL);
 
-	pipe_open(ptr, O_RDONLY);
+	char handshake[] = "handshake";
+
+	int flags = O_RDONLY;
+	if (ptr->name != NULL && strcmp(ptr->name, handshake) == 0)
+		flags |= O_NONBLOCK;
+
+	pipe_open(ptr, flags);
 
 	int fd = -1;
 	if (ptr != NULL)

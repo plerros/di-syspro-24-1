@@ -173,6 +173,9 @@ skip:
 
 void mkfifo_werr(char *str)
 {
+	if (strlen(str) == 0)
+		return;
+
 	int rc = mkfifo(str, 0600);
 	if (rc == -1){
 		perror("ERROR");
@@ -234,22 +237,22 @@ int main()
 		packets_unpack(p, &arr);
 		packets_free(p);
 
-		if (array_get_size(arr) == 0) {
-			array_free(arr);
-			continue;
-		}
-
 		char pid[100];
 		char tocmd_name[200];
 		char fromcmd_name[200];
+		pid[0] = '\0';
+		tocmd_name[0] = '\0';
+		fromcmd_name[0] = '\0';
 
 		for (size_t i = 0; i < array_get_size(arr); i++)
 			pid[i] = *((char *)array_get(arr, i));
 
 		array_free(arr);
 
-		sprintf(tocmd_name, "pipes/%s.tocmd", pid);
-		sprintf(fromcmd_name, "pipes/%s.toexec", pid);
+		if (pid[0] != '\0') {
+			sprintf(tocmd_name, "pipes/%s.tocmd", pid);
+			sprintf(fromcmd_name, "pipes/%s.toexec", pid);
+		}
 
 		mkfifo_werr(fromcmd_name);
 		mkfifo_werr(tocmd_name);
