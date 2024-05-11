@@ -90,7 +90,7 @@ void array_print_str(struct array *arr)
 {
 	char *str = (char*) array_get(arr, 0);
 	if (str != NULL)
-		printf("%s\n", str);
+		fprintf(stderr, "%s\n", str);
 }
 
 void array_copy(struct array *src, struct array **dst)

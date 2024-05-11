@@ -156,14 +156,14 @@ void msg_print(
 		return;
 
 #ifdef DEBUG
-	printf("%ld / %ld: ", rc, msg_size);
+	fprintf(stderr, "%ld / %ld: ", rc, msg_size);
 	for (size_t j = 0; j < msg_size; j++) {
 		if (isprint(str[j]))
-			printf("%c", str[j]);
+			fprintf(stderr, "%c", str[j]);
 		else
-			printf(".");
+			fprintf(stderr, ".");
 	}
-	printf("\n");
+	fprintf(stderr, "\n");
 #endif
 }
 
