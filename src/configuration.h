@@ -13,7 +13,7 @@
 
 #define SAFETY_CHECKS true
 
-#define QUEUE_NO_CLEAR false
+#define QUEUE_CLEAR true
 /*
  * Stray away from the requested implementation for more speed!
  */
