@@ -287,6 +287,7 @@ int main()
 	while (exd.running != NULL)
 		queue_pop(&(exd.running));
 
+	block_sigchild(&oldmask); // Protect Taskboard_free
 	taskboard_free(exd.tboard);
 	ropipe_free(exd.handshake);
 	remove(HANDSHAKE);
