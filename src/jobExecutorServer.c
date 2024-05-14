@@ -81,6 +81,9 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 	if (command == NULL)
 		return;
 
+	sigset_t oldmask;
+	block_sigchild(&oldmask);
+
 	struct array *stripped = NULL;
 	command_strip(command, &stripped);
 
@@ -169,6 +172,7 @@ void executor_processcmd(struct executor_data *exd, struct array *command)
 
 skip:
 	array_free(stripped);
+	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 }
 
 void mkfifo_werr(char *str)

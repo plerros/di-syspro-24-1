@@ -101,38 +101,31 @@ size_t queue_pop(struct queue **ptr)
 
 size_t queue_find_pop(struct queue **ptr, size_t task_id, pid_t pid)
 {
-	if (ptr == NULL)
+	bool pid_matters = (pid != -1);
+	bool tid_matters = (task_id != 0);
+
+	if (!pid_matters && !tid_matters)
 		return 0;
 
-	struct queue *tmp = *ptr;
-	bool update_ptr = false;
-
-	if (task_id == 0 && pid == -1)
-		goto out;
-
-	while (1) {
-		if (task_id != 0 && queue_gettaskid(tmp) == task_id)
+	struct queue *to_remove = NULL;
+	for (struct queue *i = gnext(*ptr); i != *ptr; i = gnext(i)) {
+		if (pid_matters && queue_getpid(i) == pid) {
+			to_remove = i;
 			break;
-		if (pid != -1 && queue_getpid(tmp) == pid)
+		}
+		if (pid_matters && queue_gettaskid(i) == task_id) {
+			to_remove = i;
 			break;
-
-		tmp = gnext(tmp);
-		if (tmp == *ptr) // not found
-			return 0;
+		}
 	}
-	tmp = gnext(tmp); // pop removes (tmp->next)->prev which is tmp
+	if (to_remove == NULL)
+		return 0;
 
-out:
-	if (*ptr == tmp)
-		update_ptr = true;
-
-	size_t ret = queue_pop(&tmp);
-
-	if (tmp == NULL)
-		update_ptr = true;
-
-	if (update_ptr)
-		*ptr = tmp;
+	size_t ret = 0;
+	if (to_remove == *ptr)
+		ret = queue_pop(ptr);
+	else
+		ret = queue_pop(&to_remove);
 
 	return ret;
 }
