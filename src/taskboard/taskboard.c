@@ -398,7 +398,7 @@ pid_t taskboard_run(struct taskboard *ptr)
 			strcat(newpath, cwd);
 
 			setenv("PATH", newpath, 1);
-			rc = execlp("sh", "sh", "-c", (char *)array_get(tmp->command, 0), NULL);
+			rc = execlp("bash", "bash", "-c", (char *)array_get(tmp->command, 0), NULL);
 		}
 		else {
 			tmp->pid = pid;

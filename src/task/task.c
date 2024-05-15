@@ -107,7 +107,7 @@ void task_end(struct task *ptr)
 		return;
 
 	if (ptr->pid != -1)
-		kill(ptr->pid, SIGSTOP);
+		kill(ptr->pid, SIGKILL);
 
 	ptr->pid = -1;
 	array_free(ptr->command);
